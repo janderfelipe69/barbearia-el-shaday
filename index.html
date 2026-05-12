@@ -1699,11 +1699,19 @@
 
     const { data, error } = await db
       .from('servicos')
-      .select('*')
-      .eq('ativo', true)
+      .select('id, nome, preco, duracao, ativo')
       .order('nome');
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('loadServicos error:', error);
+      lista.innerHTML = '<div class="loading">Erro ao carregar serviços</div>';
+      return;
+    }
+
+    // Filtra ativos (se coluna existir) ou mostra todos
+    const ativos = (data || []).filter(s => s.ativo !== false);
+
+    if (ativos.length === 0) {
       lista.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">✂️</div>
@@ -1712,7 +1720,7 @@
       return;
     }
 
-    lista.innerHTML = data.map(s => `
+    lista.innerHTML = ativos.map(s => `
       <div class="service-card" onclick="selectService(this, '${s.nome.replace(/'/g,"\\'")}', ${s.preco}, ${s.duracao})">
         <div class="service-left">
           <div class="service-name">${s.nome}</div>
@@ -1736,11 +1744,14 @@
 
     const { data, error } = await db
       .from('servicos')
-      .select('*')
+      .select('id, nome, preco, duracao, ativo')
       .order('nome');
 
     if (error) {
-      lista.innerHTML = '<div class="loading">Erro ao carregar.</div>';
+      console.error('loadAdminServicos error:', error);
+      lista.innerHTML = `<div style="color:var(--text-dim);font-size:0.8rem;padding:2rem;text-align:center;line-height:1.9;">
+        Erro ao carregar.<br><span style="font-size:0.7rem;opacity:0.6">${error.message}</span>
+      </div>`;
       return;
     }
 
@@ -1753,12 +1764,16 @@
       return;
     }
 
-    lista.innerHTML = data.map(s => `
+    const isAdmin = state.adminLogado === 'Admin';
+
+    lista.innerHTML = data.map(s => {
+      const ativo = s.ativo !== false; // trata null/undefined como ativo
+      return `
       <div class="servico-admin-card" id="scard-${s.id}">
         <div class="servico-admin-info">
           <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
             <div class="servico-admin-nome">${s.nome}</div>
-            <span class="servico-status-badge ${s.ativo ? '' : 'inativo'}">${s.ativo ? 'ativo' : 'inativo'}</span>
+            <span class="servico-status-badge ${ativo ? '' : 'inativo'}">${ativo ? 'ativo' : 'inativo'}</span>
           </div>
           ${s.descricao ? `<div class="servico-admin-desc">${s.descricao}</div>` : ''}
           <div class="servico-admin-meta">
@@ -1766,14 +1781,15 @@
             <span class="servico-admin-dur">· ${s.duracao} min</span>
           </div>
         </div>
-        ${state.adminLogado === 'Admin' ? `
+        ${isAdmin ? `
         <div style="display:flex; flex-direction:column; gap:0.4rem; align-items:center;">
-          <button class="btn-delete-servico" onclick="toggleServicoAtivo(${s.id}, ${s.ativo})" title="${s.ativo ? 'Desativar' : 'Ativar'}">
-            ${s.ativo ? '⏸' : '▶'}
+          <button class="btn-delete-servico" onclick="toggleServicoAtivo(${s.id}, ${ativo})" title="${ativo ? 'Desativar' : 'Ativar'}">
+            ${ativo ? '⏸' : '▶'}
           </button>
           <button class="btn-delete-servico" onclick="confirmarExclusao(${s.id}, '${s.nome.replace(/'/g,"\\'")}')">🗑</button>
         </div>` : ''}
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   async function toggleServicoAtivo(id, ativoAtual) {
