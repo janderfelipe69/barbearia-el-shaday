@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barbearia El Shaday</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Raleway:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --gold: #C9A84C;
@@ -18,252 +19,85 @@
     --white-dim: #A89880;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: var(--black);
-    color: var(--white);
-    font-family: 'Raleway', sans-serif;
-    font-weight: 300;
-    min-height: 100vh;
-  }
-
-  /* TELAS */
+  body { background: var(--black); color: var(--white); font-family: 'Raleway', sans-serif; font-weight: 300; min-height: 100vh; }
   .screen { display: none; min-height: 100vh; flex-direction: column; }
   .screen.active { display: flex; }
-
-  /* HEADER */
-  header {
-    background: var(--black-2);
-    border-bottom: 1px solid var(--gold-dim);
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
+  header { background: var(--black-2); border-bottom: 1px solid var(--gold-dim); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
   .logo { font-family: 'Cinzel', serif; font-size: 1.1rem; color: var(--gold); letter-spacing: 0.1em; }
   .logo span { display: block; font-size: 0.6rem; color: var(--white-dim); letter-spacing: 0.3em; font-family: 'Raleway', sans-serif; font-weight: 400; }
-  .back-btn {
-    background: none; border: none; color: var(--gold); font-size: 1.2rem; cursor: pointer; padding: 4px 8px;
-  }
-
-  /* HERO */
-  .hero {
-    background: linear-gradient(180deg, var(--black-2) 0%, var(--black) 100%);
-    padding: 3rem 1.5rem 2rem;
-    text-align: center;
-    border-bottom: 1px solid var(--black-3);
-  }
+  .back-btn { background: none; border: none; color: var(--gold); font-size: 1.2rem; cursor: pointer; padding: 4px 8px; }
+  .hero { background: linear-gradient(180deg, var(--black-2) 0%, var(--black) 100%); padding: 3rem 1.5rem 2rem; text-align: center; border-bottom: 1px solid var(--black-3); }
   .hero-title { font-family: 'Cinzel', serif; font-size: 2rem; color: var(--gold); letter-spacing: 0.05em; line-height: 1.2; }
   .hero-subtitle { font-size: 0.75rem; letter-spacing: 0.4em; color: var(--white-dim); margin-top: 0.4rem; text-transform: uppercase; }
   .hero-divider { width: 60px; height: 1px; background: var(--gold-dim); margin: 1.2rem auto; }
   .hero-desc { font-size: 0.85rem; color: var(--white-dim); line-height: 1.7; }
-
-  /* BOTAO PRINCIPAL */
-  .btn-gold {
-    background: var(--gold);
-    color: var(--black);
-    border: none;
-    padding: 0.9rem 2rem;
-    font-family: 'Cinzel', serif;
-    font-size: 0.85rem;
-    letter-spacing: 0.15em;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 1.5rem;
-    transition: background 0.2s;
-  }
+  .btn-gold { background: var(--gold); color: var(--black); border: none; padding: 0.9rem 2rem; font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.15em; cursor: pointer; width: 100%; margin-top: 1.5rem; transition: background 0.2s; }
   .btn-gold:hover { background: var(--gold-light); }
-  .btn-outline {
-    background: transparent;
-    color: var(--gold);
-    border: 1px solid var(--gold-dim);
-    padding: 0.9rem 2rem;
-    font-family: 'Cinzel', serif;
-    font-size: 0.85rem;
-    letter-spacing: 0.15em;
-    cursor: pointer;
-    width: 100%;
-    margin-top: 0.75rem;
-    transition: all 0.2s;
-  }
+  .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-outline { background: transparent; color: var(--gold); border: 1px solid var(--gold-dim); padding: 0.9rem 2rem; font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.15em; cursor: pointer; width: 100%; margin-top: 0.75rem; transition: all 0.2s; }
   .btn-outline:hover { border-color: var(--gold); color: var(--gold-light); }
-
-  /* CONTEUDO */
   .content { padding: 1.5rem; flex: 1; }
-  .section-title {
-    font-family: 'Cinzel', serif;
-    font-size: 0.8rem;
-    color: var(--gold-dim);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-
-  /* CARDS BARBEIROS */
+  .section-title { font-family: 'Cinzel', serif; font-size: 0.8rem; color: var(--gold-dim); letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 1rem; }
   .barbers-grid { display: flex; flex-direction: column; gap: 0.75rem; }
-  .barber-card {
-    background: var(--black-3);
-    border: 1px solid var(--black-4);
-    padding: 1rem 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
+  .barber-card { background: var(--black-3); border: 1px solid var(--black-4); padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: border-color 0.2s; }
   .barber-card:hover, .barber-card.selected { border-color: var(--gold); }
-  .barber-avatar {
-    width: 48px; height: 48px;
-    background: var(--black-4);
-    border: 1px solid var(--gold-dim);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Cinzel', serif;
-    font-size: 1rem;
-    color: var(--gold);
-    flex-shrink: 0;
-  }
+  .barber-avatar { width: 48px; height: 48px; background: var(--black-4); border: 1px solid var(--gold-dim); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 1rem; color: var(--gold); flex-shrink: 0; }
   .barber-name { font-family: 'Cinzel', serif; font-size: 0.9rem; color: var(--white); }
   .barber-role { font-size: 0.75rem; color: var(--white-dim); margin-top: 2px; }
   .barber-check { margin-left: auto; color: var(--gold); font-size: 1.2rem; display: none; }
   .barber-card.selected .barber-check { display: block; }
-
-  /* CARDS SERVICOS */
   .services-grid { display: flex; flex-direction: column; gap: 0.75rem; }
-  .service-card {
-    background: var(--black-3);
-    border: 1px solid var(--black-4);
-    padding: 1rem 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
+  .service-card { background: var(--black-3); border: 1px solid var(--black-4); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: border-color 0.2s; }
   .service-card:hover, .service-card.selected { border-color: var(--gold); }
   .service-name { font-size: 0.9rem; color: var(--white); }
   .service-info { font-size: 0.75rem; color: var(--white-dim); margin-top: 2px; }
   .service-price { font-family: 'Cinzel', serif; font-size: 0.95rem; color: var(--gold); text-align: right; }
   .service-duration { font-size: 0.7rem; color: var(--white-dim); text-align: right; margin-top: 2px; }
-
-  /* HORARIOS */
   .horarios-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
-  .horario-btn {
-    background: var(--black-3);
-    border: 1px solid var(--black-4);
-    color: var(--white);
-    padding: 0.7rem 0.5rem;
-    font-family: 'Raleway', sans-serif;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-  }
+  .horario-btn { background: var(--black-3); border: 1px solid var(--black-4); color: var(--white); padding: 0.7rem 0.5rem; font-family: 'Raleway', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; text-align: center; }
   .horario-btn:hover, .horario-btn.selected { border-color: var(--gold); color: var(--gold); }
   .horario-btn.indisponivel { opacity: 0.3; cursor: not-allowed; text-decoration: line-through; }
-
-  /* CONFIRMACAO */
-  .confirm-card {
-    background: var(--black-3);
-    border: 1px solid var(--gold-dim);
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-  }
+  .confirm-card { background: var(--black-3); border: 1px solid var(--gold-dim); padding: 1.5rem; margin-bottom: 1rem; }
   .confirm-row { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--black-4); }
   .confirm-row:last-child { border-bottom: none; }
   .confirm-label { font-size: 0.75rem; color: var(--white-dim); letter-spacing: 0.1em; text-transform: uppercase; }
   .confirm-value { font-family: 'Cinzel', serif; font-size: 0.9rem; color: var(--white); }
   .confirm-total .confirm-value { color: var(--gold); font-size: 1.1rem; }
-
-  /* INPUT */
   .input-group { margin-bottom: 1rem; }
   .input-label { font-size: 0.7rem; color: var(--white-dim); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.4rem; display: block; }
-  .input-field {
-    width: 100%;
-    background: var(--black-3);
-    border: 1px solid var(--black-4);
-    color: var(--white);
-    padding: 0.75rem 1rem;
-    font-family: 'Raleway', sans-serif;
-    font-size: 0.9rem;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+  .input-field { width: 100%; background: var(--black-3); border: 1px solid var(--black-4); color: var(--white); padding: 0.75rem 1rem; font-family: 'Raleway', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
   .input-field:focus { border-color: var(--gold); }
-
-  /* SUCESSO */
-  .success-icon {
-    width: 80px; height: 80px;
-    border: 2px solid var(--gold);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    margin: 2rem auto 1.5rem;
-    font-size: 2rem;
-    color: var(--gold);
-  }
+  .success-icon { width: 80px; height: 80px; border: 2px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 2rem auto 1.5rem; font-size: 2rem; color: var(--gold); }
   .success-title { font-family: 'Cinzel', serif; font-size: 1.4rem; color: var(--gold); text-align: center; }
   .success-sub { font-size: 0.85rem; color: var(--white-dim); text-align: center; margin-top: 0.5rem; line-height: 1.6; }
-
-  /* ADMIN */
   .admin-tabs { display: flex; border-bottom: 1px solid var(--black-4); }
-  .admin-tab {
-    flex: 1; padding: 0.75rem; text-align: center;
-    font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--white-dim); cursor: pointer; border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-  }
+  .admin-tab { flex: 1; padding: 0.75rem; text-align: center; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--white-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
   .admin-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
-  .agendamento-item {
-    background: var(--black-3);
-    border: 1px solid var(--black-4);
-    padding: 1rem 1.25rem;
-    margin-bottom: 0.75rem;
-  }
+  .agendamento-item { background: var(--black-3); border: 1px solid var(--black-4); padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
   .agendamento-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
   .agendamento-cliente { font-family: 'Cinzel', serif; font-size: 0.9rem; color: var(--white); }
   .agendamento-horario { font-size: 0.8rem; color: var(--gold); }
   .agendamento-info { font-size: 0.75rem; color: var(--white-dim); }
-  .badge {
-    font-size: 0.65rem; padding: 3px 10px; letter-spacing: 0.1em; text-transform: uppercase;
-  }
+  .badge { font-size: 0.65rem; padding: 3px 10px; letter-spacing: 0.1em; text-transform: uppercase; }
   .badge-pending { background: #2A1F00; color: #C9A84C; border: 1px solid #8B6914; }
   .badge-confirmed { background: #0A2A0A; color: #4CAF50; border: 1px solid #2E7D2E; }
-
-  /* NAV BOTTOM (admin) */
-  .bottom-nav {
-    background: var(--black-2);
-    border-top: 1px solid var(--black-4);
-    display: flex;
-    padding: 0.75rem 0;
-  }
-  .nav-item {
-    flex: 1; text-align: center; cursor: pointer;
-    font-size: 0.65rem; color: var(--white-dim); letter-spacing: 0.1em; text-transform: uppercase;
-    transition: color 0.2s;
-  }
+  .bottom-nav { background: var(--black-2); border-top: 1px solid var(--black-4); display: flex; padding: 0.75rem 0; }
+  .nav-item { flex: 1; text-align: center; cursor: pointer; font-size: 0.65rem; color: var(--white-dim); letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s; }
   .nav-item.active { color: var(--gold); }
   .nav-icon { font-size: 1.2rem; display: block; margin-bottom: 2px; }
-
-  .ornament { color: var(--gold-dim); font-size: 1rem; margin: 0 0.5rem; }
   .date-selector { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 1.25rem; }
-  .date-btn {
-    flex-shrink: 0;
-    background: var(--black-3);
-    border: 1px solid var(--black-4);
-    color: var(--white-dim);
-    padding: 0.6rem 1rem;
-    font-family: 'Raleway', sans-serif;
-    font-size: 0.75rem;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-    min-width: 60px;
-  }
+  .date-btn { flex-shrink: 0; background: var(--black-3); border: 1px solid var(--black-4); color: var(--white-dim); padding: 0.6rem 1rem; font-family: 'Raleway', sans-serif; font-size: 0.75rem; cursor: pointer; text-align: center; transition: all 0.2s; min-width: 60px; }
   .date-btn.selected { border-color: var(--gold); color: var(--gold); }
   .date-day { font-size: 1rem; font-weight: 500; color: inherit; display: block; }
+  .loading { text-align: center; padding: 2rem; color: var(--white-dim); font-size: 0.85rem; }
+  .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: var(--gold); color: var(--black); padding: 0.75rem 1.5rem; font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 0.1em; z-index: 999; display: none; }
 </style>
 </head>
 <body>
 
-<!-- ===================== TELA 1: HOME ===================== -->
+<div class="toast" id="toast"></div>
+
+<!-- TELA 1: HOME -->
 <div class="screen active" id="screen-home">
   <div class="hero">
     <div class="hero-title">EL SHADAY</div>
@@ -275,7 +109,7 @@
   </div>
 </div>
 
-<!-- ===================== TELA 2: ESCOLHER BARBEIRO ===================== -->
+<!-- TELA 2: ESCOLHER BARBEIRO -->
 <div class="screen" id="screen-barbeiro">
   <header>
     <button class="back-btn" onclick="goTo('screen-home')">←</button>
@@ -287,26 +121,17 @@
     <div class="barbers-grid">
       <div class="barber-card" onclick="selectBarber(this, 'Rafael Henrique')">
         <div class="barber-avatar">RH</div>
-        <div>
-          <div class="barber-name">Rafael Henrique</div>
-          <div class="barber-role">Barbeiro</div>
-        </div>
+        <div><div class="barber-name">Rafael Henrique</div><div class="barber-role">Barbeiro</div></div>
         <div class="barber-check">✓</div>
       </div>
       <div class="barber-card" onclick="selectBarber(this, 'Bruno Duarte')">
         <div class="barber-avatar">BD</div>
-        <div>
-          <div class="barber-name">Bruno Duarte</div>
-          <div class="barber-role">Barbeiro</div>
-        </div>
+        <div><div class="barber-name">Bruno Duarte</div><div class="barber-role">Barbeiro</div></div>
         <div class="barber-check">✓</div>
       </div>
       <div class="barber-card" onclick="selectBarber(this, 'Rhayan Barber')">
         <div class="barber-avatar">RB</div>
-        <div>
-          <div class="barber-name">Rhayan Barber</div>
-          <div class="barber-role">Barbeiro</div>
-        </div>
+        <div><div class="barber-name">Rhayan Barber</div><div class="barber-role">Barbeiro</div></div>
         <div class="barber-check">✓</div>
       </div>
     </div>
@@ -314,7 +139,7 @@
   </div>
 </div>
 
-<!-- ===================== TELA 3: ESCOLHER SERVIÇO ===================== -->
+<!-- TELA 3: ESCOLHER SERVIÇO -->
 <div class="screen" id="screen-servico">
   <header>
     <button class="back-btn" onclick="goTo('screen-barbeiro')">←</button>
@@ -325,51 +150,27 @@
     <div class="section-title">Escolha o serviço</div>
     <div class="services-grid">
       <div class="service-card" onclick="selectService(this, 'Corte de Cabelo', 35, 30)">
-        <div>
-          <div class="service-name">Corte de Cabelo</div>
-          <div class="service-info">Tesoura ou máquina</div>
-        </div>
-        <div>
-          <div class="service-price">R$ 35</div>
-          <div class="service-duration">30 min</div>
-        </div>
+        <div><div class="service-name">Corte de Cabelo</div><div class="service-info">Tesoura ou máquina</div></div>
+        <div><div class="service-price">R$ 35</div><div class="service-duration">30 min</div></div>
       </div>
       <div class="service-card" onclick="selectService(this, 'Barba', 25, 20)">
-        <div>
-          <div class="service-name">Barba</div>
-          <div class="service-info">Navalha ou aparador</div>
-        </div>
-        <div>
-          <div class="service-price">R$ 25</div>
-          <div class="service-duration">20 min</div>
-        </div>
+        <div><div class="service-name">Barba</div><div class="service-info">Navalha ou aparador</div></div>
+        <div><div class="service-price">R$ 25</div><div class="service-duration">20 min</div></div>
       </div>
       <div class="service-card" onclick="selectService(this, 'Corte + Barba', 55, 50)">
-        <div>
-          <div class="service-name">Corte + Barba</div>
-          <div class="service-info">Combo completo</div>
-        </div>
-        <div>
-          <div class="service-price">R$ 55</div>
-          <div class="service-duration">50 min</div>
-        </div>
+        <div><div class="service-name">Corte + Barba</div><div class="service-info">Combo completo</div></div>
+        <div><div class="service-price">R$ 55</div><div class="service-duration">50 min</div></div>
       </div>
       <div class="service-card" onclick="selectService(this, 'Sobrancelha', 15, 15)">
-        <div>
-          <div class="service-name">Sobrancelha</div>
-          <div class="service-info">Design e alinhamento</div>
-        </div>
-        <div>
-          <div class="service-price">R$ 15</div>
-          <div class="service-duration">15 min</div>
-        </div>
+        <div><div class="service-name">Sobrancelha</div><div class="service-info">Design e alinhamento</div></div>
+        <div><div class="service-price">R$ 15</div><div class="service-duration">15 min</div></div>
       </div>
     </div>
     <button class="btn-gold" style="margin-top:2rem" onclick="nextStep('servico', 'screen-horario')">CONTINUAR</button>
   </div>
 </div>
 
-<!-- ===================== TELA 4: ESCOLHER HORÁRIO ===================== -->
+<!-- TELA 4: ESCOLHER HORÁRIO -->
 <div class="screen" id="screen-horario">
   <header>
     <button class="back-btn" onclick="goTo('screen-servico')">←</button>
@@ -385,7 +186,7 @@
   </div>
 </div>
 
-<!-- ===================== TELA 5: DADOS DO CLIENTE ===================== -->
+<!-- TELA 5: DADOS DO CLIENTE -->
 <div class="screen" id="screen-dados">
   <header>
     <button class="back-btn" onclick="goTo('screen-horario')">←</button>
@@ -402,30 +203,18 @@
       <label class="input-label">WhatsApp</label>
       <input class="input-field" id="clienteTel" type="tel" placeholder="(17) 99999-9999">
     </div>
-    <div class="section-title" style="margin-top:1.5rem">Resumo do agendamento</div>
+    <div class="section-title" style="margin-top:1.5rem">Resumo</div>
     <div class="confirm-card">
-      <div class="confirm-row">
-        <span class="confirm-label">Profissional</span>
-        <span class="confirm-value" id="resumoBarbeiro">—</span>
-      </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Serviço</span>
-        <span class="confirm-value" id="resumoServico">—</span>
-      </div>
-      <div class="confirm-row">
-        <span class="confirm-label">Data e hora</span>
-        <span class="confirm-value" id="resumoHorario">—</span>
-      </div>
-      <div class="confirm-row confirm-total">
-        <span class="confirm-label">Total</span>
-        <span class="confirm-value" id="resumoPreco">—</span>
-      </div>
+      <div class="confirm-row"><span class="confirm-label">Profissional</span><span class="confirm-value" id="resumoBarbeiro">—</span></div>
+      <div class="confirm-row"><span class="confirm-label">Serviço</span><span class="confirm-value" id="resumoServico">—</span></div>
+      <div class="confirm-row"><span class="confirm-label">Data e hora</span><span class="confirm-value" id="resumoHorario">—</span></div>
+      <div class="confirm-row confirm-total"><span class="confirm-label">Total</span><span class="confirm-value" id="resumoPreco">—</span></div>
     </div>
-    <button class="btn-gold" onclick="confirmarAgendamento()">CONFIRMAR AGENDAMENTO</button>
+    <button class="btn-gold" id="btnConfirmar" onclick="confirmarAgendamento()">CONFIRMAR AGENDAMENTO</button>
   </div>
 </div>
 
-<!-- ===================== TELA 6: SUCESSO ===================== -->
+<!-- TELA 6: SUCESSO -->
 <div class="screen" id="screen-sucesso">
   <header>
     <div style="width:32px"></div>
@@ -435,12 +224,12 @@
   <div class="content" style="text-align:center; padding-top:1rem;">
     <div class="success-icon">✓</div>
     <div class="success-title">Agendado!</div>
-    <div class="success-sub" id="successMsg">Seu horário foi reservado com sucesso.<br>Até logo!</div>
+    <div class="success-sub" id="successMsg">Seu horário foi reservado com sucesso.</div>
     <button class="btn-gold" style="margin-top:2.5rem" onclick="goTo('screen-home')">VOLTAR AO INÍCIO</button>
   </div>
 </div>
 
-<!-- ===================== TELA 7: ADMIN LOGIN ===================== -->
+<!-- TELA 7: ADMIN LOGIN -->
 <div class="screen" id="screen-admin-login">
   <header>
     <button class="back-btn" onclick="goTo('screen-home')">←</button>
@@ -452,95 +241,65 @@
     <div class="barbers-grid">
       <div class="barber-card" onclick="loginAdmin('Rafael Henrique')">
         <div class="barber-avatar">RH</div>
-        <div>
-          <div class="barber-name">Rafael Henrique</div>
-          <div class="barber-role">Barbeiro</div>
-        </div>
-        <div style="margin-left:auto; color:var(--gold-dim); font-size:0.8rem;">→</div>
+        <div><div class="barber-name">Rafael Henrique</div><div class="barber-role">Barbeiro</div></div>
+        <div style="margin-left:auto; color:var(--gold-dim);">→</div>
       </div>
       <div class="barber-card" onclick="loginAdmin('Bruno Duarte')">
         <div class="barber-avatar">BD</div>
-        <div>
-          <div class="barber-name">Bruno Duarte</div>
-          <div class="barber-role">Barbeiro</div>
-        </div>
-        <div style="margin-left:auto; color:var(--gold-dim); font-size:0.8rem;">→</div>
+        <div><div class="barber-name">Bruno Duarte</div><div class="barber-role">Barbeiro</div></div>
+        <div style="margin-left:auto; color:var(--gold-dim);">→</div>
       </div>
       <div class="barber-card" onclick="loginAdmin('Rhayan Barber')">
         <div class="barber-avatar">RB</div>
-        <div>
-          <div class="barber-name">Rhayan Barber</div>
-          <div class="barber-role">Barbeiro</div>
-        </div>
-        <div style="margin-left:auto; color:var(--gold-dim); font-size:0.8rem;">→</div>
+        <div><div class="barber-name">Rhayan Barber</div><div class="barber-role">Barbeiro</div></div>
+        <div style="margin-left:auto; color:var(--gold-dim);">→</div>
       </div>
     </div>
-    <div style="margin-top:1.5rem; text-align:center;">
-      <div style="font-size:0.7rem; color:var(--white-dim); letter-spacing:0.1em;">— OU —</div>
-      <button class="btn-outline" style="margin-top:1rem" onclick="loginAdmin('Admin')">ENTRAR COMO ADMINISTRADOR</button>
-    </div>
+    <button class="btn-outline" style="margin-top:1.5rem" onclick="loginAdmin('Admin')">ENTRAR COMO ADMINISTRADOR</button>
   </div>
 </div>
 
-<!-- ===================== TELA 8: PAINEL ADMIN ===================== -->
+<!-- TELA 8: PAINEL ADMIN -->
 <div class="screen" id="screen-admin">
   <header>
     <div class="logo">EL SHADAY <span id="adminNome">PAINEL</span></div>
-    <button class="back-btn" onclick="goTo('screen-home')" title="Sair">✕</button>
+    <button class="back-btn" onclick="goTo('screen-home')">✕</button>
   </header>
   <div class="admin-tabs">
     <div class="admin-tab active" onclick="switchTab(this, 'tab-agenda')">Agenda</div>
     <div class="admin-tab" onclick="switchTab(this, 'tab-clientes')">Clientes</div>
   </div>
-
   <div class="content" id="tab-agenda" style="flex:1; overflow-y:auto;">
     <div class="section-title">Agendamentos de hoje</div>
-    <div id="agendamentosLista"></div>
+    <div id="agendamentosLista"><div class="loading">Carregando...</div></div>
   </div>
-
   <div class="content" id="tab-clientes" style="display:none; flex:1; overflow-y:auto;">
     <div class="section-title">Todos os clientes</div>
-    <div id="clientesLista"></div>
+    <div id="clientesLista"><div class="loading">Carregando...</div></div>
   </div>
-
   <div class="bottom-nav">
-    <div class="nav-item active">
-      <span class="nav-icon">📅</span>
-      Agenda
-    </div>
-    <div class="nav-item">
-      <span class="nav-icon">✂️</span>
-      Serviços
-    </div>
-    <div class="nav-item">
-      <span class="nav-icon">⚙️</span>
-      Config
-    </div>
+    <div class="nav-item active"><span class="nav-icon">📅</span>Agenda</div>
+    <div class="nav-item"><span class="nav-icon">✂️</span>Serviços</div>
+    <div class="nav-item"><span class="nav-icon">⚙️</span>Config</div>
   </div>
 </div>
 
 <script>
-  // Estado do agendamento
-  const state = {
-    barbeiro: null,
-    servico: null,
-    preco: null,
-    duracao: null,
-    horario: null,
-    data: null,
-    adminLogado: null
-  };
+  // SUPABASE
+  const SUPABASE_URL = 'https://cwskaqwoxdxkywpndyzo.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3c2thcXdveGR4a3l3cG5keXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Mzc4OTYsImV4cCI6MjA5NDExMzg5Nn0.65IB3SUeUbxeL5zhU7vz03UCqIdebeR0p7Z8rouDbt4';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Agendamentos simulados (em produção vem do Supabase)
-  const agendamentos = [
-    { cliente: 'João Silva', tel: '(17) 99123-4567', barbeiro: 'Rafael Henrique', servico: 'Corte + Barba', horario: '09:00', preco: 55, status: 'confirmado' },
-    { cliente: 'Pedro Souza', tel: '(17) 98765-4321', barbeiro: 'Bruno Duarte', servico: 'Corte de Cabelo', horario: '10:30', preco: 35, status: 'pendente' },
-    { cliente: 'Lucas Martins', tel: '(17) 99456-7890', barbeiro: 'Rhayan Barber', servico: 'Barba', horario: '11:00', preco: 25, status: 'confirmado' },
-    { cliente: 'André Lima', tel: '(17) 99321-6540', barbeiro: 'Rafael Henrique', servico: 'Corte de Cabelo', horario: '14:00', preco: 35, status: 'pendente' },
-  ];
-
+  const state = { barbeiro: null, servico: null, preco: null, duracao: null, horario: null, data: null, dataFormatada: null, adminLogado: null };
   const horariosTodos = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
-  const horariosOcupados = ['09:00','10:30','14:00'];
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3000);
+  }
 
   function goTo(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -552,7 +311,7 @@
   }
 
   function selectBarber(el, nome) {
-    document.querySelectorAll('.barber-card').forEach(c => c.classList.remove('selected'));
+    document.querySelectorAll('#screen-barbeiro .barber-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
     state.barbeiro = nome;
   }
@@ -560,20 +319,17 @@
   function selectService(el, nome, preco, duracao) {
     document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-    state.servico = nome;
-    state.preco = preco;
-    state.duracao = duracao;
+    state.servico = nome; state.preco = preco; state.duracao = duracao;
   }
 
   function nextStep(tipo, destino) {
-    if (tipo === 'barbeiro' && !state.barbeiro) { alert('Selecione um profissional'); return; }
-    if (tipo === 'servico' && !state.servico) { alert('Selecione um serviço'); return; }
-    if (tipo === 'horario' && !state.horario) { alert('Selecione um horário'); return; }
+    if (tipo === 'barbeiro' && !state.barbeiro) { showToast('Selecione um profissional'); return; }
+    if (tipo === 'servico' && !state.servico) { showToast('Selecione um serviço'); return; }
+    if (tipo === 'horario' && !state.horario) { showToast('Selecione um horário'); return; }
     goTo(destino);
   }
 
-  function buildHorarios() {
-    // Datas
+  async function buildHorarios() {
     const dc = document.getElementById('dateSelector');
     dc.innerHTML = '';
     const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -584,22 +340,42 @@
       const btn = document.createElement('button');
       btn.className = 'date-btn' + (i === 0 ? ' selected' : '');
       btn.innerHTML = `<span class="date-day">${d.getDate()}</span>${dias[d.getDay()]}`;
+      const dataStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dataFmt = `${d.getDate()}/${d.getMonth()+1}`;
       btn.onclick = function() {
         document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
         this.classList.add('selected');
-        state.data = `${d.getDate()}/${d.getMonth()+1}`;
+        state.data = dataStr;
+        state.dataFormatada = dataFmt;
+        loadHorarios();
       };
-      if (i === 0) state.data = `${d.getDate()}/${d.getMonth()+1}`;
+      if (i === 0) { state.data = dataStr; state.dataFormatada = dataFmt; }
       dc.appendChild(btn);
     }
-    // Horários
+    loadHorarios();
+  }
+
+  async function loadHorarios() {
     const grid = document.getElementById('horariosGrid');
+    grid.innerHTML = '<div class="loading" style="grid-column:span 3">Verificando horários...</div>';
+    state.horario = null;
+
+    // Busca horários já agendados no Supabase para este barbeiro e data
+    const { data: ocupados } = await db
+      .from('agendamentos')
+      .select('horario')
+      .eq('barbeiro', state.barbeiro)
+      .eq('data', state.data)
+      .eq('status', 'confirmado');
+
+    const horariosOcupados = (ocupados || []).map(a => a.horario);
     grid.innerHTML = '';
     horariosTodos.forEach(h => {
       const btn = document.createElement('button');
-      btn.className = 'horario-btn' + (horariosOcupados.includes(h) ? ' indisponivel' : '');
+      const ocupado = horariosOcupados.includes(h);
+      btn.className = 'horario-btn' + (ocupado ? ' indisponivel' : '');
       btn.textContent = h;
-      if (!horariosOcupados.includes(h)) {
+      if (!ocupado) {
         btn.onclick = function() {
           document.querySelectorAll('.horario-btn:not(.indisponivel)').forEach(b => b.classList.remove('selected'));
           this.classList.add('selected');
@@ -613,19 +389,43 @@
   function buildResumo() {
     document.getElementById('resumoBarbeiro').textContent = state.barbeiro || '—';
     document.getElementById('resumoServico').textContent = state.servico || '—';
-    document.getElementById('resumoHorario').textContent = state.data && state.horario ? `${state.data} às ${state.horario}` : '—';
+    document.getElementById('resumoHorario').textContent = state.dataFormatada && state.horario ? `${state.dataFormatada} às ${state.horario}` : '—';
     document.getElementById('resumoPreco').textContent = state.preco ? `R$ ${state.preco}` : '—';
   }
 
-  function confirmarAgendamento() {
+  async function confirmarAgendamento() {
     const nome = document.getElementById('clienteNome').value.trim();
     const tel = document.getElementById('clienteTel').value.trim();
-    if (!nome || !tel) { alert('Preencha seu nome e WhatsApp'); return; }
+    if (!nome || !tel) { showToast('Preencha seu nome e WhatsApp'); return; }
+
+    const btn = document.getElementById('btnConfirmar');
+    btn.disabled = true;
+    btn.textContent = 'SALVANDO...';
+
+    const { error } = await db.from('agendamentos').insert({
+      cliente: nome,
+      telefone: tel,
+      barbeiro: state.barbeiro,
+      servico: state.servico,
+      preco: state.preco,
+      data: state.data,
+      horario: state.horario,
+      status: 'confirmado'
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'CONFIRMAR AGENDAMENTO';
+
+    if (error) {
+      showToast('Erro ao salvar. Tente novamente.');
+      console.error(error);
+      return;
+    }
+
     document.getElementById('successMsg').innerHTML =
       `<strong style="color:var(--gold)">${nome}</strong>, seu horário foi reservado!<br><br>` +
-      `📅 ${state.data} às ${state.horario}<br>` +
-      `✂️ ${state.servico} com ${state.barbeiro}<br><br>` +
-      `Até logo!`;
+      `📅 ${state.dataFormatada} às ${state.horario}<br>` +
+      `✂️ ${state.servico} com ${state.barbeiro}<br><br>Até logo!`;
     goTo('screen-sucesso');
   }
 
@@ -635,45 +435,49 @@
     goTo('screen-admin');
   }
 
-  function buildAdmin() {
+  async function buildAdmin() {
     const lista = document.getElementById('agendamentosLista');
-    lista.innerHTML = '';
-    const filtrados = state.adminLogado === 'Admin'
-      ? agendamentos
-      : agendamentos.filter(a => a.barbeiro === state.adminLogado);
+    lista.innerHTML = '<div class="loading">Carregando...</div>';
 
-    if (filtrados.length === 0) {
+    const hoje = new Date();
+    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+
+    let query = db.from('agendamentos').select('*').eq('data', hojeStr).order('horario');
+    if (state.adminLogado !== 'Admin') query = query.eq('barbeiro', state.adminLogado);
+
+    const { data, error } = await query;
+
+    if (error) { lista.innerHTML = '<div class="loading">Erro ao carregar.</div>'; return; }
+
+    if (!data || data.length === 0) {
       lista.innerHTML = '<p style="color:var(--white-dim); font-size:0.85rem; text-align:center; padding:2rem 0;">Nenhum agendamento para hoje</p>';
-      return;
-    }
-    filtrados.forEach(a => {
-      lista.innerHTML += `
+    } else {
+      lista.innerHTML = data.map(a => `
         <div class="agendamento-item">
           <div class="agendamento-header">
             <span class="agendamento-cliente">${a.cliente}</span>
-            <span class="badge ${a.status === 'confirmado' ? 'badge-confirmed' : 'badge-pending'}">
-              ${a.status === 'confirmado' ? 'Confirmado' : 'Pendente'}
-            </span>
+            <span class="badge ${a.status === 'confirmado' ? 'badge-confirmed' : 'badge-pending'}">${a.status}</span>
           </div>
-          <div class="agendamento-info">
-            ${a.barbeiro} &nbsp;·&nbsp; ${a.servico} &nbsp;·&nbsp; R$ ${a.preco}
-          </div>
+          <div class="agendamento-info">${a.barbeiro} · ${a.servico} · R$ ${a.preco}</div>
+          <div class="agendamento-info" style="margin-top:2px;">${a.telefone}</div>
           <div class="agendamento-horario" style="margin-top:0.4rem;">${a.horario}</div>
-        </div>`;
-    });
+        </div>`).join('');
+    }
 
+    // Clientes
+    const { data: todos } = await db.from('agendamentos').select('*').order('created_at', { ascending: false });
     const clientes = document.getElementById('clientesLista');
-    clientes.innerHTML = '';
-    agendamentos.forEach(a => {
-      clientes.innerHTML += `
+    if (!todos || todos.length === 0) {
+      clientes.innerHTML = '<p style="color:var(--white-dim); font-size:0.85rem; text-align:center; padding:2rem 0;">Nenhum cliente ainda</p>';
+    } else {
+      const unicos = [...new Map(todos.map(a => [a.telefone, a])).values()];
+      clientes.innerHTML = unicos.map(a => `
         <div class="agendamento-item">
-          <div class="agendamento-header">
-            <span class="agendamento-cliente">${a.cliente}</span>
-          </div>
-          <div class="agendamento-info">${a.tel}</div>
+          <div class="agendamento-header"><span class="agendamento-cliente">${a.cliente}</span></div>
+          <div class="agendamento-info">${a.telefone}</div>
           <div class="agendamento-info" style="margin-top:4px;">Último: ${a.servico} com ${a.barbeiro}</div>
-        </div>`;
-    });
+        </div>`).join('');
+    }
   }
 
   function switchTab(el, tabId) {
