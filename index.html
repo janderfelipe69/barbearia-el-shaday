@@ -270,7 +270,8 @@
     <div class="admin-tab" onclick="switchTab(this, 'tab-clientes')">Clientes</div>
   </div>
   <div class="content" id="tab-agenda" style="flex:1; overflow-y:auto;">
-    <div class="section-title">Agendamentos de hoje</div>
+    <div class="date-selector" id="adminDateSelector" style="margin-bottom:1rem;"></div>
+    <div class="section-title" id="adminDiaTitulo">Agendamentos de hoje</div>
     <div id="agendamentosLista"><div class="loading">Carregando...</div></div>
   </div>
   <div class="content" id="tab-clientes" style="display:none; flex:1; overflow-y:auto;">
@@ -436,21 +437,50 @@
   }
 
   async function buildAdmin() {
+    buildAdminDates();
+    loadAdminAgendamentos();
+  }
+
+  function buildAdminDates() {
+    const dc = document.getElementById('adminDateSelector');
+    dc.innerHTML = '';
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const hoje = new Date();
+    // mostra 3 dias antes e 7 dias depois
+    for (let i = -3; i <= 7; i++) {
+      const d = new Date(hoje);
+      d.setDate(hoje.getDate() + i);
+      const btn = document.createElement('button');
+      const dataStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      btn.className = 'date-btn' + (i === 0 ? ' selected' : '');
+      btn.innerHTML = `<span class="date-day">${d.getDate()}</span>${dias[d.getDay()]}`;
+      btn.onclick = function() {
+        document.querySelectorAll('#adminDateSelector .date-btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        state.adminData = dataStr;
+        const label = i === 0 ? 'hoje' : `${d.getDate()}/${d.getMonth()+1}`;
+        document.getElementById('adminDiaTitulo').textContent = `Agendamentos de ${label}`;
+        loadAdminAgendamentos();
+      };
+      if (i === 0) state.adminData = dataStr;
+      dc.appendChild(btn);
+    }
+    // scroll para o centro (hoje)
+    setTimeout(() => { const sel = dc.querySelector('.selected'); if(sel) sel.scrollIntoView({inline:'center', block:'nearest'}); }, 100);
+  }
+
+  async function loadAdminAgendamentos() {
     const lista = document.getElementById('agendamentosLista');
     lista.innerHTML = '<div class="loading">Carregando...</div>';
 
-    const hoje = new Date();
-    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
-
-    let query = db.from('agendamentos').select('*').eq('data', hojeStr).order('horario');
+    let query = db.from('agendamentos').select('*').eq('data', state.adminData).order('horario');
     if (state.adminLogado !== 'Admin') query = query.eq('barbeiro', state.adminLogado);
 
     const { data, error } = await query;
-
     if (error) { lista.innerHTML = '<div class="loading">Erro ao carregar.</div>'; return; }
 
     if (!data || data.length === 0) {
-      lista.innerHTML = '<p style="color:var(--white-dim); font-size:0.85rem; text-align:center; padding:2rem 0;">Nenhum agendamento para hoje</p>';
+      lista.innerHTML = '<p style="color:var(--white-dim); font-size:0.85rem; text-align:center; padding:2rem 0;">Nenhum agendamento para este dia</p>';
     } else {
       lista.innerHTML = data.map(a => `
         <div class="agendamento-item">
@@ -458,9 +488,10 @@
             <span class="agendamento-cliente">${a.cliente}</span>
             <span class="badge ${a.status === 'confirmado' ? 'badge-confirmed' : 'badge-pending'}">${a.status}</span>
           </div>
-          <div class="agendamento-info">${a.barbeiro} · ${a.servico} · R$ ${a.preco}</div>
-          <div class="agendamento-info" style="margin-top:2px;">${a.telefone}</div>
-          <div class="agendamento-horario" style="margin-top:0.4rem;">${a.horario}</div>
+          <div class="agendamento-info" style="margin-top:4px;">✂️ ${a.servico} · R$ ${a.preco}</div>
+          <div class="agendamento-info" style="margin-top:2px;">👤 ${a.barbeiro}</div>
+          <div class="agendamento-info" style="margin-top:2px;">📱 ${a.telefone}</div>
+          <div class="agendamento-horario" style="margin-top:0.5rem;">🕐 ${a.horario}</div>
         </div>`).join('');
     }
 
