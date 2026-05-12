@@ -1738,10 +1738,6 @@
     const lista = document.getElementById('adminServicosLista');
     lista.innerHTML = '<div class="loading">Carregando</div>';
 
-    // Mostrar botão "+ Novo" só para Admin
-    const btnNovo = document.getElementById('btnNovoServico');
-    if (btnNovo) btnNovo.style.display = state.adminLogado === 'Admin' ? '' : 'none';
-
     const { data, error } = await db
       .from('servicos')
       .select('id, nome, preco, duracao, ativo')
@@ -1764,7 +1760,7 @@
       return;
     }
 
-    const isAdmin = state.adminLogado === 'Admin';
+    const isAdmin = true; // todos podem gerenciar serviços
 
     lista.innerHTML = data.map(s => {
       const ativo = s.ativo !== false; // trata null/undefined como ativo
