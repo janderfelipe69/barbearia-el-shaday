@@ -1410,34 +1410,58 @@
   }
 
   // ── LÓGICA DE CONFLITO ──────────────────────────────────────────────────
-  // Cada agendamento ocupa 1h30. Dado um horário agendado em HH:MM,
-  // os slots bloqueados são: todos os slots dentro do intervalo
-  // [agendado, agendado + 89 minutos], pois um novo agendamento iniciando
-  // em qualquer um desses slots iria colidir com o serviço em andamento.
-  // Além disso, um novo slot só é válido se o serviço de 1h30 que ele
-  // iniciaria não colidir com nenhum agendamento já existente — ou seja,
-  // também bloqueamos slots cujo intervalo [slot, slot + 89min] contenha
-  // um agendamento existente.
   //
-  // Resumo: slot H está bloqueado se existe agendamento A tal que:
-  //   |H - A| < 90 minutos  (em minutos absolutos na mesma escala)
+  // Regras:
+  //  • Cada agendamento existente ocupa [inicio, inicio + duracao)
+  //  • Um novo slot H com duração D_novo está BLOQUEADO se seu intervalo
+  //    [H, H + D_novo) se sobrepõe com qualquer agendamento existente,
+  //    descontando a tolerância de 15min de transição entre atendimentos.
+  //
+  //  Sobreposição real (sem tolerância):
+  //    H < (A + D_existente)  &&  (H + D_novo) > A
+  //
+  //  Com tolerância de 15min:
+  //    H < (A + D_existente - TOLERANCIA)  &&  (H + D_novo - TOLERANCIA) > A
+  //
+  //  Exemplo: serviço de 2h agendado às 16h → ocupa [960, 1080)
+  //    • Slot 14:00 (com serviço de 30min): [840,870) — não conflita ✓
+  //    • Slot 15:00 (com serviço de 30min): [900,930) — não conflita ✓
+  //    • Slot 15:30 (com serviço de 30min): [930,960) — termina exatamente
+  //       quando começa o próximo, dentro da tolerância ✓
+  //    • Slot 15:45 (com serviço de 30min): conflita ✗ (bloqueado)
+  //    • Slot 16:00 — ocupado ✗
+  //    • Slot 17:00 — dentro do serviço de 2h ✗ (bloqueado)
+  //    • Slot 18:00 — livre ✓ (após o fim às 18h + tolerância ok)
+
+  const TOLERANCIA = 15; // minutos de buffer entre atendimentos
 
   function horaParaMin(h) {
     const [hh, mm] = h.split(':').map(Number);
     return hh * 60 + mm;
   }
 
-  function calcularSlotsOcupados(agendamentos) {
-    const DURACAO = 90; // minutos por serviço
-    const minutosAgendados = agendamentos.map(a => horaParaMin(a.horario));
+  function calcularSlotsOcupados(agendamentos, duracaoNovoServico) {
+    // duracaoNovoServico: duração em minutos do serviço que o cliente quer agendar
+    const D_novo = duracaoNovoServico || state.duracao || 60;
 
     return horariosTodos.filter(slot => {
-      const slotMin = horaParaMin(slot);
-      // Bloquear se qualquer agendamento existente conflitar com este slot
-      return minutosAgendados.some(agMin => {
-        // Dois intervalos [slot, slot+90) e [ag, ag+90) se sobrepõem quando
-        // a diferença absoluta entre os inícios for menor que 90 min
-        return Math.abs(slotMin - agMin) < DURACAO;
+      const H = horaParaMin(slot);
+
+      return agendamentos.some(ag => {
+        const A     = horaParaMin(ag.horario);
+        const D_ag  = Number(ag.duracao) || 60; // duração do agendamento existente
+
+        // Intervalo do agendamento existente: [A, A + D_ag)
+        // Intervalo do novo slot:             [H, H + D_novo)
+        // Conflito se há sobreposição descontando a tolerância:
+        const novoComeca = H;
+        const novoTermina = H + D_novo;
+        const agComeca = A;
+        const agTermina = A + D_ag;
+
+        // Sobreposição real com tolerância: os dois intervalos se tocam com
+        // menos de TOLERANCIA minutos de folga entre eles
+        return novoComeca < (agTermina - TOLERANCIA) && (novoTermina - TOLERANCIA) > agComeca;
       });
     });
   }
@@ -1450,12 +1474,13 @@
 
     const { data: agendamentos } = await db
       .from('agendamentos')
-      .select('horario')
+      .select('horario, duracao, servico')
       .eq('barbeiro', state.barbeiro)
       .eq('data', state.data)
       .eq('status', 'confirmado');
 
-    const slotsOcupados = calcularSlotsOcupados(agendamentos || []);
+    // Passa a duração do serviço selecionado para calcular conflitos corretamente
+    const slotsOcupados = calcularSlotsOcupados(agendamentos || [], state.duracao);
 
     grid.innerHTML = '';
     horariosTodos.forEach(h => {
@@ -1496,6 +1521,7 @@
       barbeiro: state.barbeiro,
       servico: state.servico,
       preco: state.preco,
+      duracao: state.duracao,
       data: state.data,
       horario: state.horario,
       status: 'confirmado'
