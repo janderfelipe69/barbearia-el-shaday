@@ -1201,9 +1201,9 @@
     <button class="back-btn" onclick="goTo('screen-home')">✕</button>
   </div>
   <div class="admin-tabs">
-    <div class="admin-tab active" onclick="switchTab(this, 'tab-agenda')">Agenda</div>
-    <div class="admin-tab" onclick="switchTab(this, 'tab-clientes')">Clientes</div>
-    <div class="admin-tab" id="tabServicosBtn" onclick="switchTabServicos(this)">Serviços</div>
+    <div class="admin-tab active" id="atab-agenda" onclick="bottomNavClick('agenda')">Agenda</div>
+    <div class="admin-tab" id="atab-clientes" onclick="bottomNavClick('clientes')">Clientes</div>
+    <div class="admin-tab" id="atab-servicos" onclick="bottomNavClick('servicos')">Serviços</div>
   </div>
   <div class="content" id="tab-agenda" style="flex:1; overflow-y:auto;">
     <div class="date-strip" id="adminDateSelector" style="margin-bottom:1rem;"></div>
@@ -1220,14 +1220,14 @@
         <div class="section-label" style="margin-bottom:0.2rem">Cardápio</div>
         <div style="font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--text); font-weight:400;">Serviços</div>
       </div>
-      <button class="btn-add-servico" onclick="abrirModalServico()">+ Novo</button>
+      <button class="btn-add-servico" id="btnNovoServico" onclick="abrirModalServico()">+ Novo</button>
     </div>
     <div id="adminServicosLista"><div class="loading">Carregando</div></div>
   </div>
   <div class="bottom-nav">
-    <div class="nav-item active"><span class="nav-icon">📅</span>Agenda</div>
-    <div class="nav-item"><span class="nav-icon">✂️</span>Serviços</div>
-    <div class="nav-item"><span class="nav-icon">⚙️</span>Config</div>
+    <div class="nav-item active" id="bnav-agenda" onclick="bottomNavClick('agenda')"><span class="nav-icon">📅</span>Agenda</div>
+    <div class="nav-item" id="bnav-servicos" onclick="bottomNavClick('servicos')"><span class="nav-icon">✂️</span>Serviços</div>
+    <div class="nav-item" id="bnav-clientes" onclick="bottomNavClick('clientes')"><span class="nav-icon">👥</span>Clientes</div>
   </div>
 </div>
 
@@ -1491,14 +1491,6 @@
     goTo('screen-sucesso');
   }
 
-  function loginAdmin(nome) {
-    state.adminLogado = nome;
-    document.getElementById('adminNome').textContent = nome === 'Admin' ? 'Administrador' : nome;
-    // Mostrar aba Serviços apenas para Admin
-    document.getElementById('tabServicosBtn').style.display = nome === 'Admin' ? '' : 'none';
-    goTo('screen-admin');
-  }
-
   async function buildAdmin() {
     buildAdminDates();
     loadAdminAgendamentos();
@@ -1674,22 +1666,30 @@
   }
   // ────────────────────────────────────────────────────────────────────────
 
-  function switchTab(el, tabId) {
-    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('tab-agenda').style.display = 'none';
-    document.getElementById('tab-clientes').style.display = 'none';
-    document.getElementById('tab-servicos').style.display = 'none';
-    document.getElementById(tabId).style.display = 'block';
+  // ── NAVEGAÇÃO UNIFICADA DO PAINEL ────────────────────────────────────────
+  function bottomNavClick(tab) {
+    // Atualiza bottom nav
+    ['agenda','servicos','clientes'].forEach(t => {
+      const bn = document.getElementById('bnav-' + t);
+      if (bn) bn.classList.toggle('active', t === tab);
+      const at = document.getElementById('atab-' + t);
+      if (at) at.classList.toggle('active', t === tab);
+    });
+    // Mostra/esconde conteúdo
+    document.getElementById('tab-agenda').style.display   = tab === 'agenda'   ? 'block' : 'none';
+    document.getElementById('tab-clientes').style.display = tab === 'clientes' ? 'block' : 'none';
+    document.getElementById('tab-servicos').style.display = tab === 'servicos' ? 'block' : 'none';
+    if (tab === 'servicos') loadAdminServicos();
   }
 
-  function switchTabServicos(el) {
-    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('tab-agenda').style.display = 'none';
-    document.getElementById('tab-clientes').style.display = 'none';
-    document.getElementById('tab-servicos').style.display = 'block';
-    loadAdminServicos();
+  function switchTab(el, tabId) { /* legado – mantido para compatibilidade */ }
+  function switchTabServicos(el) { bottomNavClick('servicos'); }
+
+  function loginAdmin(nome) {
+    state.adminLogado = nome;
+    document.getElementById('adminNome').textContent = nome === 'Admin' ? 'Administrador' : nome;
+    // Aba Serviços visível para TODOS – barbeiros também precisam ver o cardápio
+    goTo('screen-admin');
   }
 
   // ── SERVIÇOS DINÂMICOS (tela de agendamento) ─────────────────────────────
@@ -1730,6 +1730,10 @@
     const lista = document.getElementById('adminServicosLista');
     lista.innerHTML = '<div class="loading">Carregando</div>';
 
+    // Mostrar botão "+ Novo" só para Admin
+    const btnNovo = document.getElementById('btnNovoServico');
+    if (btnNovo) btnNovo.style.display = state.adminLogado === 'Admin' ? '' : 'none';
+
     const { data, error } = await db
       .from('servicos')
       .select('*')
@@ -1762,12 +1766,13 @@
             <span class="servico-admin-dur">· ${s.duracao} min</span>
           </div>
         </div>
+        ${state.adminLogado === 'Admin' ? `
         <div style="display:flex; flex-direction:column; gap:0.4rem; align-items:center;">
           <button class="btn-delete-servico" onclick="toggleServicoAtivo(${s.id}, ${s.ativo})" title="${s.ativo ? 'Desativar' : 'Ativar'}">
             ${s.ativo ? '⏸' : '▶'}
           </button>
           <button class="btn-delete-servico" onclick="confirmarExclusao(${s.id}, '${s.nome.replace(/'/g,"\\'")}')">🗑</button>
-        </div>
+        </div>` : ''}
       </div>`).join('');
   }
 
