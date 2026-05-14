@@ -16,7 +16,7 @@
   --border-gold: rgba(200,165,90,0.35);
   --radius: 2px;
 }
-
+ 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
