@@ -248,13 +248,16 @@ async function loginClienteGoogle() {
 }
 
 async function loginBarbeiroGoogle() {
-  // Sinaliza que o retorno do OAuth deve ser tratado como barbeiro
-  sessionStorage.setItem('oauth_context', 'barbeiro');
+  // localStorage persiste através do redirect OAuth (sessionStorage é apagado)
+  localStorage.setItem('oauth_context', 'barbeiro');
   const { error } = await db.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.href, queryParams: { prompt: 'select_account' } }
   });
-  if (error) showToast('Erro ao conectar com Google.');
+  if (error) {
+    localStorage.removeItem('oauth_context');
+    showToast('Erro ao conectar com Google.');
+  }
 }
 
 async function loginClienteEmail() {
@@ -754,41 +757,66 @@ async function verificarSessao() {
   if (barbeiro) {
     // É barbeiro — verifica se está autorizado (ativo)
     if (!barbeiro.ativo) {
-      showToast('Acesso não autorizado.');
+      showToast('Acesso não autorizado. Conta desativada.');
       await db.auth.signOut();
       return;
     }
-    const nome = barbeiro.nome || user.user_metadata?.nome_completo || user.email.split('@')[0];
+    const nome = barbeiro.nome || user.user_metadata?.nome_completo || user.user_metadata?.full_name || user.email.split('@')[0];
     state.adminLogado = nome;
     state.adminUserId = user.id;
     document.getElementById('adminNome').textContent = nome;
     goTo('screen-admin');
   } else {
-    // É cliente — verifica sessão como cliente
+    // Não é barbeiro — trata como cliente
     await verificarSessaoCliente(session);
   }
 }
 
 // Detecta retorno do login e monitora mudanças de sessão
 db.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN') {
-    const contexto = sessionStorage.getItem('oauth_context');
-    sessionStorage.removeItem('oauth_context');
+  if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+    if (!session) return;
 
-    const telaAtual = document.querySelector('.screen.active')?.id;
+    const contexto = localStorage.getItem('oauth_context');
 
-    if (contexto === 'barbeiro' || telaAtual === 'screen-admin-login') {
-      // Contexto de barbeiro — verifica autorização
-      await verificarSessao();
-    } else {
-      // Contexto de cliente
-      const foiCliente = await verificarSessaoCliente(session);
-      if (!foiCliente) {
-        // Fallback: pode ser barbeiro que já tinha sessão ativa
-        await verificarSessao();
+    if (contexto === 'barbeiro') {
+      localStorage.removeItem('oauth_context');
+
+      // Verifica se está cadastrado como barbeiro autorizado
+      const { data: barbeiro } = await db
+        .from('barbeiros')
+        .select('nome, ativo')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (!barbeiro) {
+        await db.auth.signOut();
+        goTo('screen-admin-login');
+        // Pequeno delay para a tela carregar antes de mostrar o erro
+        setTimeout(() => mostrarErroLogin('Conta Google não autorizada. Fale com o administrador.'), 300);
+        return;
       }
+
+      if (!barbeiro.ativo) {
+        await db.auth.signOut();
+        goTo('screen-admin-login');
+        setTimeout(() => mostrarErroLogin('Sua conta está desativada. Fale com o administrador.'), 300);
+        return;
+      }
+
+      // Autorizado — entra no painel
+      const nome = barbeiro.nome || session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+      state.adminLogado = nome;
+      state.adminUserId = session.user.id;
+      document.getElementById('adminNome').textContent = nome;
+      goTo('screen-admin');
+      return;
     }
+
+    // Sem contexto específico: verificarSessao decide se é barbeiro ou cliente
+    await verificarSessao();
   }
+
   if (event === 'SIGNED_OUT') {
     state.adminLogado   = null;
     state.adminUserId   = null;
@@ -796,13 +824,7 @@ db.auth.onAuthStateChange(async (event, session) => {
   }
 });
 
-// Verifica sessão ao carregar a página
-(async () => {
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) return;
-  // Na carga da página, tenta como admin/barbeiro primeiro
-  await verificarSessao();
-})();
+// onAuthStateChange com INITIAL_SESSION cobre a inicialização da página
 
 // ══════════════════════════ PERFIL DO CLIENTE ══════════════════════════
 function fecharPerfil() {
