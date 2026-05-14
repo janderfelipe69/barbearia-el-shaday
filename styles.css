@@ -16,7 +16,7 @@
   --border-gold: rgba(200,165,90,0.35);
   --radius: 2px;
 }
- 
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -994,3 +994,21 @@ body {
 }
 .btn-google:hover { border-color: var(--border-gold); background: var(--bg4); }
 .btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── AUTH DIVIDER ── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-dim);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}

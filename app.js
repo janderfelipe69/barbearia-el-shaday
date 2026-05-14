@@ -3,7 +3,7 @@ const SUPABASE_URL = 'https://cwskaqwoxdxkywpndyzo.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3c2thcXdveGR4a3l3cG5keXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Mzc4OTYsImV4cCI6MjA5NDExMzg5Nn0.65IB3SUeUbxeL5zhU7vz03UCqIdebeR0p7Z8rouDbt4';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
- 
+
 // ══════════════════════════ ESTADO GLOBAL ══════════════════════════
 const state = {
   barbeiro: null,
@@ -15,7 +15,9 @@ const state = {
   dataFormatada: null,
   adminLogado: null,
   adminUserId: null,
-  adminData: new Date().toISOString().split('T')[0]
+  adminData: new Date().toISOString().split('T')[0],
+  // Cliente logado
+  clienteLogado: null,   // { nome, telefone, userId }
 };
 
 const horariosTodos = [
@@ -218,13 +220,195 @@ async function loadHorarios() {
   });
 }
 
-// ══════════════════════════ RESUMO & CONFIRMAÇÃO ══════════════════════════
+// ══════════════════════════ AGENDAMENTO: INICIAR ══════════════════════════
+function iniciarAgendamento() {
+  if (state.clienteLogado) {
+    goTo('screen-barbeiro');
+  } else {
+    goTo('screen-cliente-login');
+  }
+}
+
+// ══════════════════════════ AUTH CLIENTE ══════════════════════════
+
+function switchClienteTab(tab) {
+  const isEntrar = tab === 'entrar';
+  document.getElementById('cli-tab-btn-entrar').classList.toggle('active', isEntrar);
+  document.getElementById('cli-tab-btn-criar').classList.toggle('active', !isEntrar);
+  document.getElementById('cli-painel-entrar').style.display = isEntrar ? 'flex' : 'none';
+  document.getElementById('cli-painel-criar').style.display  = isEntrar ? 'none' : 'flex';
+}
+
+async function loginClienteGoogle() {
+  const { error } = await db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href, queryParams: { prompt: 'select_account' } }
+  });
+  if (error) showToast('Erro ao conectar com Google.');
+}
+
+async function loginClienteEmail() {
+  const email = document.getElementById('cliLoginEmail').value.trim();
+  const senha  = document.getElementById('cliLoginSenha').value;
+  const erroEl = document.getElementById('cliLoginErro');
+  erroEl.style.display = 'none';
+
+  if (!email || !senha) { erroEl.textContent = 'Preencha e-mail e senha.'; erroEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('btnCliEntrar');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
+  btn.disabled = false; btn.textContent = 'Entrar';
+
+  if (error) {
+    erroEl.textContent = error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
+      ? 'E-mail ou senha incorretos.' : error.message;
+    erroEl.style.display = 'block';
+    return;
+  }
+
+  await verificarSessaoCliente(data.session);
+}
+
+async function cadastrarCliente() {
+  const nome   = document.getElementById('cliCadNome').value.trim();
+  const tel    = document.getElementById('cliCadTel').value.trim();
+  const email  = document.getElementById('cliCadEmail').value.trim();
+  const senha  = document.getElementById('cliCadSenha').value;
+  const senha2 = document.getElementById('cliCadSenha2').value;
+  const erroEl    = document.getElementById('cliCadErro');
+  const sucessoEl = document.getElementById('cliCadSucesso');
+  erroEl.style.display = 'none'; sucessoEl.style.display = 'none';
+
+  const err = (msg) => { erroEl.textContent = msg; erroEl.style.display = 'block'; };
+  if (!nome)            return err('Informe seu nome.');
+  if (!tel || tel.replace(/\D/g,'').length < 10) return err('Informe um WhatsApp válido.');
+  if (!email)           return err('Informe um e-mail válido.');
+  if (senha.length < 6) return err('Senha com no mínimo 6 caracteres.');
+  if (senha !== senha2) return err('As senhas não coincidem.');
+
+  const btn = document.getElementById('btnCliCadastrar');
+  btn.disabled = true; btn.textContent = 'Criando conta...';
+
+  const { data, error } = await db.auth.signUp({
+    email,
+    password: senha,
+    options: { data: { nome_completo: nome, telefone: tel } }
+  });
+
+  btn.disabled = false; btn.textContent = 'Criar Conta';
+
+  if (error) {
+    const msg = error.message.includes('already registered') || error.message.includes('User already registered')
+      ? 'Este e-mail já está cadastrado. Tente entrar.' : error.message;
+    err(msg); return;
+  }
+
+  if (data.session) {
+    await verificarSessaoCliente(data.session);
+  } else {
+    sucessoEl.textContent = '✓ Conta criada! Verifique seu e-mail para confirmar e depois entre.';
+    sucessoEl.style.display = 'block';
+  }
+}
+
+async function verificarSessaoCliente(session) {
+  if (!session) return false;
+  const user = session.user;
+
+  // Verifica se é barbeiro/admin — se for, NÃO é cliente
+  const { data: barbeiro } = await db
+    .from('barbeiros')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (barbeiro) {
+    // É barbeiro — trata como admin, não como cliente
+    return false;
+  }
+
+  const nome = user.user_metadata?.nome_completo || user.user_metadata?.full_name || user.email.split('@')[0];
+  const tel  = user.user_metadata?.telefone || '';
+
+  state.clienteLogado = { nome, telefone: tel, userId: user.id };
+
+  // Se não tem telefone (ex: entrou pelo Google), pede para completar perfil
+  if (!tel || tel.replace(/\D/g,'').length < 10) {
+    document.getElementById('perfilNome').value = nome;
+    document.getElementById('perfilTel').value  = tel;
+    goTo('screen-completar-perfil');
+    return true;
+  }
+
+  // Vai direto para o fluxo de agendamento
+  goTo('screen-barbeiro');
+  return true;
+}
+
+async function salvarPerfilCliente() {
+  const nome = document.getElementById('perfilNome').value.trim();
+  const tel  = document.getElementById('perfilTel').value.trim();
+  const erroEl = document.getElementById('perfilErro');
+  erroEl.style.display = 'none';
+
+  if (!nome) { erroEl.textContent = 'Informe seu nome.'; erroEl.style.display = 'block'; return; }
+  if (!tel || tel.replace(/\D/g,'').length < 10) { erroEl.textContent = 'Informe um WhatsApp válido.'; erroEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('btnSalvarPerfil');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  const { error } = await db.auth.updateUser({
+    data: { nome_completo: nome, telefone: tel }
+  });
+
+  btn.disabled = false; btn.textContent = 'Salvar e Continuar';
+
+  if (error) { erroEl.textContent = 'Erro ao salvar. Tente novamente.'; erroEl.style.display = 'block'; return; }
+
+  state.clienteLogado = { ...state.clienteLogado, nome, telefone: tel };
+  goTo('screen-barbeiro');
+}
+
+async function logoutCliente() {
+  await db.auth.signOut();
+  state.clienteLogado = null;
+  goTo('screen-home');
+  showToast('Sessão encerrada.');
+}
+
+
 function buildResumo() {
   document.getElementById('resumoBarbeiro').textContent = state.barbeiro || '—';
   document.getElementById('resumoServico').textContent  = state.servico  || '—';
   document.getElementById('resumoHorario').textContent  =
     state.dataFormatada && state.horario ? `${state.dataFormatada} às ${state.horario}` : '—';
   document.getElementById('resumoPreco').textContent    = state.preco ? `R$ ${state.preco}` : '—';
+
+  const cli = state.clienteLogado;
+  const cartao    = document.getElementById('clienteLogadoCard');
+  const campoNome = document.getElementById('campoNomeManual');
+  const campoTel  = document.getElementById('campoTelManual');
+  const aviso     = document.getElementById('clienteNaoLogadoAviso');
+
+  if (cli) {
+    const iniciais = cli.nome.split(' ').slice(0,2).map(p=>p[0].toUpperCase()).join('');
+    document.getElementById('clienteCardIniciais').textContent = iniciais;
+    document.getElementById('clienteCardNome').textContent     = cli.nome;
+    document.getElementById('clienteCardTel').textContent      = cli.telefone || 'Sem telefone';
+    cartao.style.display    = 'flex';
+    campoNome.style.display = 'none';
+    campoTel.style.display  = 'none';
+    aviso.style.display     = 'none';
+    document.getElementById('clienteNome').value = cli.nome;
+    document.getElementById('clienteTel').value  = cli.telefone;
+  } else {
+    cartao.style.display    = 'none';
+    campoNome.style.display = 'block';
+    campoTel.style.display  = 'block';
+    aviso.style.display     = 'none';
+  }
 }
 
 async function confirmarAgendamento() {
@@ -444,6 +628,25 @@ async function loginComEmail() {
     return;
   }
 
+  // Verifica se está na tabela de barbeiros autorizados
+  const { data: barbeiro } = await db
+    .from('barbeiros')
+    .select('nome, ativo')
+    .eq('user_id', data.user.id)
+    .maybeSingle();
+
+  if (!barbeiro) {
+    await db.auth.signOut();
+    mostrarErroLogin('Acesso não autorizado. Fale com o administrador.');
+    return;
+  }
+
+  if (!barbeiro.ativo) {
+    await db.auth.signOut();
+    mostrarErroLogin('Sua conta está desativada. Fale com o administrador.');
+    return;
+  }
+
   await verificarSessao();
 }
 
@@ -488,6 +691,20 @@ async function cadastrarComEmail() {
 
   // Supabase pode confirmar email automaticamente ou não
   if (data.session) {
+    // Verifica se está na tabela de barbeiros autorizados
+    const { data: barbeiro } = await db
+      .from('barbeiros')
+      .select('nome, ativo')
+      .eq('user_id', data.session.user.id)
+      .maybeSingle();
+
+    if (!barbeiro || !barbeiro.ativo) {
+      await db.auth.signOut();
+      const erroEl = document.getElementById('cadastroErro');
+      erroEl.textContent = 'Conta criada, mas você não está na lista de autorizados. Fale com o administrador.';
+      erroEl.style.display = 'block';
+      return;
+    }
     // Confirmação desativada — já está logado
     await verificarSessao();
   } else {
@@ -516,27 +733,62 @@ async function verificarSessao() {
   if (!session) return;
 
   const user = session.user;
-  const nome = user.user_metadata?.nome_completo || user.email.split('@')[0];
 
-  state.adminLogado = nome;
-  state.adminUserId = user.id;
-  document.getElementById('adminNome').textContent = nome;
-  goTo('screen-admin');
+  // Verifica se é barbeiro/admin cadastrado na tabela barbeiros
+  const { data: barbeiro } = await db
+    .from('barbeiros')
+    .select('nome, admin, ativo')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (barbeiro) {
+    // É barbeiro — verifica se está autorizado (ativo)
+    if (!barbeiro.ativo) {
+      showToast('Acesso não autorizado.');
+      await db.auth.signOut();
+      return;
+    }
+    const nome = barbeiro.nome || user.user_metadata?.nome_completo || user.email.split('@')[0];
+    state.adminLogado = nome;
+    state.adminUserId = user.id;
+    document.getElementById('adminNome').textContent = nome;
+    goTo('screen-admin');
+  } else {
+    // É cliente — verifica sessão como cliente
+    await verificarSessaoCliente(session);
+  }
 }
 
 // Detecta retorno do login e monitora mudanças de sessão
-db.auth.onAuthStateChange((event, session) => {
+db.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN') {
-    verificarSessao();
+    // Detecta contexto: se está na tela de login do barbeiro → trata como admin
+    const telaAtual = document.querySelector('.screen.active')?.id;
+    if (telaAtual === 'screen-admin-login') {
+      await verificarSessao();
+    } else {
+      // Tenta como cliente primeiro
+      const foiCliente = await verificarSessaoCliente(session);
+      if (!foiCliente) {
+        // Pode ser barbeiro redirecionado de OAuth
+        await verificarSessao();
+      }
+    }
   }
   if (event === 'SIGNED_OUT') {
-    state.adminLogado = null;
-    state.adminUserId = null;
+    state.adminLogado  = null;
+    state.adminUserId  = null;
+    state.clienteLogado = null;
   }
 });
 
-// Verifica sessão ao carregar a página (caso já esteja logado)
-verificarSessao();
+// Verifica sessão ao carregar a página
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return;
+  // Na carga da página, tenta como admin/barbeiro primeiro
+  await verificarSessao();
+})();
 
 // ══════════════════════════ PERFIL DO CLIENTE ══════════════════════════
 function fecharPerfil() {
