@@ -33,6 +33,11 @@ function showToast(msg) {
 }
 
 function goTo(id) {
+  // Bloqueia acesso direto ao painel sem estar logado
+  if (id === 'screen-admin' && !state.adminLogado) {
+    goTo('screen-admin-login');
+    return;
+  }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
