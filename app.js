@@ -35,6 +35,42 @@ function showToast(msg) {
   setTimeout(() => t.style.display = 'none', 3000);
 }
 
+// ── Validação de CPF (dígitos verificadores) ──────────────────
+function validarCPF(cpf) {
+  const n = cpf.replace(/\D/g, '');
+  if (n.length !== 11 || /^(\d)\1{10}$/.test(n)) return false;
+  let s = 0;
+  for (let i = 0; i < 9; i++) s += Number(n[i]) * (10 - i);
+  let r = (s * 10) % 11;
+  if (r === 10 || r === 11) r = 0;
+  if (r !== Number(n[9])) return false;
+  s = 0;
+  for (let i = 0; i < 10; i++) s += Number(n[i]) * (11 - i);
+  r = (s * 10) % 11;
+  if (r === 10 || r === 11) r = 0;
+  return r === Number(n[10]);
+}
+
+// ── Validação de DDD brasileiro ───────────────────────────────
+const DDDS_VALIDOS = new Set([
+  11,12,13,14,15,16,17,18,19,
+  21,22,24,27,28,
+  31,32,33,34,35,37,38,
+  41,42,43,44,45,46,47,48,49,
+  51,53,54,55,
+  61,62,63,64,65,66,67,68,69,
+  71,73,74,75,77,79,
+  81,82,83,84,85,86,87,88,89,
+  91,92,93,94,95,96,97,98,99
+]);
+
+function validarTelefone(tel) {
+  const n = tel.replace(/\D/g, '');
+  if (n.length < 10 || n.length > 11) return false;
+  const ddd = Number(n.slice(0, 2));
+  return DDDS_VALIDOS.has(ddd);
+}
+
 function goTo(id) {
   // Bloqueia acesso direto ao painel sem estar logado
   if (id === 'screen-admin' && !state.adminLogado) {
@@ -286,7 +322,9 @@ async function loginClienteEmail() {
 
 async function cadastrarCliente() {
   const nome   = document.getElementById('cliCadNome').value.trim();
+  const cpf    = document.getElementById('cliCadCpf').value.trim();
   const tel    = document.getElementById('cliCadTel').value.trim();
+  const nasc   = document.getElementById('cliCadNasc').value;
   const email  = document.getElementById('cliCadEmail').value.trim();
   const senha  = document.getElementById('cliCadSenha').value;
   const senha2 = document.getElementById('cliCadSenha2').value;
@@ -295,11 +333,24 @@ async function cadastrarCliente() {
   erroEl.style.display = 'none'; sucessoEl.style.display = 'none';
 
   const err = (msg) => { erroEl.textContent = msg; erroEl.style.display = 'block'; };
-  if (!nome)            return err('Informe seu nome.');
-  if (!tel || tel.replace(/\D/g,'').length < 10) return err('Informe um WhatsApp válido.');
-  if (!email)           return err('Informe um e-mail válido.');
+
+  // Validações
+  if (!nome || nome.trim().split(/\s+/).length < 2) return err('Informe seu nome completo (nome e sobrenome).');
+  if (!cpf || !validarCPF(cpf))  return err('CPF inválido. Verifique os números digitados.');
+  if (!tel || !validarTelefone(tel)) return err('Telefone inválido. Use um DDD válido (ex: 11, 21, 47).');
+  if (!nasc) return err('Informe sua data de nascimento.');
+  if (!email) return err('Informe um e-mail válido.');
   if (senha.length < 6) return err('Senha com no mínimo 6 caracteres.');
   if (senha !== senha2) return err('As senhas não coincidem.');
+
+  // Verifica CPF duplicado antes de criar a conta
+  const cpfNumeros = cpf.replace(/\D/g, '');
+  const { data: cpfExistente } = await db
+    .from('clientes')
+    .select('id')
+    .eq('cpf', cpfNumeros)
+    .maybeSingle();
+  if (cpfExistente) return err('Este CPF já está cadastrado. Tente entrar ou use "Esqueci a senha".');
 
   const btn = document.getElementById('btnCliCadastrar');
   btn.disabled = true; btn.textContent = 'Criando conta...';
@@ -310,13 +361,28 @@ async function cadastrarCliente() {
     options: { data: { nome_completo: nome, telefone: tel } }
   });
 
-  btn.disabled = false; btn.textContent = 'Criar Conta';
-
   if (error) {
+    btn.disabled = false; btn.textContent = 'Criar Conta';
     const msg = error.message.includes('already registered') || error.message.includes('User already registered')
       ? 'Este e-mail já está cadastrado. Tente entrar.' : error.message;
     err(msg); return;
   }
+
+  // Salva na tabela clientes
+  const userId = data.user?.id;
+  if (userId) {
+    await db.from('clientes').insert({
+      user_id:         userId,
+      nome,
+      cpf:             cpfNumeros,
+      telefone:        tel.replace(/\D/g, ''),
+      data_nascimento: nasc,
+      total_visitas:   0,
+      total_gasto:     0
+    });
+  }
+
+  btn.disabled = false; btn.textContent = 'Criar Conta';
 
   if (data.session) {
     await verificarSessaoCliente(data.session);
@@ -337,25 +403,37 @@ async function verificarSessaoCliente(session) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (barbeiro) {
-    // É barbeiro — trata como admin, não como cliente
-    return false;
-  }
+  if (barbeiro) return false;
 
   const nome = user.user_metadata?.nome_completo || user.user_metadata?.full_name || user.email.split('@')[0];
   const tel  = user.user_metadata?.telefone || '';
 
-  state.clienteLogado = { nome, telefone: tel, userId: user.id };
+  // Busca perfil completo na tabela clientes
+  const { data: perfil } = await db
+    .from('clientes')
+    .select('nome, telefone, cpf, data_nascimento, total_visitas, total_gasto')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-  // Se não tem telefone (ex: entrou pelo Google), pede para completar perfil
-  if (!tel || tel.replace(/\D/g,'').length < 10) {
-    document.getElementById('perfilNome').value = nome;
-    document.getElementById('perfilTel').value  = tel;
+  state.clienteLogado = {
+    nome:           perfil?.nome || nome,
+    telefone:       perfil?.telefone || tel.replace(/\D/g,''),
+    userId:         user.id,
+    cpf:            perfil?.cpf || null,
+    nascimento:     perfil?.data_nascimento || null,
+    totalVisitas:   perfil?.total_visitas || 0,
+    totalGasto:     perfil?.total_gasto || 0,
+  };
+
+  // Se não tem telefone (ex: entrou pelo Google e não completou), pede para completar perfil
+  const telFinal = state.clienteLogado.telefone;
+  if (!telFinal || telFinal.replace(/\D/g,'').length < 10) {
+    document.getElementById('perfilNome').value = state.clienteLogado.nome;
+    document.getElementById('perfilTel').value  = '';
     goTo('screen-completar-perfil');
     return true;
   }
 
-  // Vai direto para o fluxo de agendamento
   goTo('screen-barbeiro');
   return true;
 }
@@ -366,8 +444,8 @@ async function salvarPerfilCliente() {
   const erroEl = document.getElementById('perfilErro');
   erroEl.style.display = 'none';
 
-  if (!nome) { erroEl.textContent = 'Informe seu nome.'; erroEl.style.display = 'block'; return; }
-  if (!tel || tel.replace(/\D/g,'').length < 10) { erroEl.textContent = 'Informe um WhatsApp válido.'; erroEl.style.display = 'block'; return; }
+  if (!nome || nome.split(/\s+/).length < 2) { erroEl.textContent = 'Informe seu nome completo.'; erroEl.style.display = 'block'; return; }
+  if (!tel || !validarTelefone(tel)) { erroEl.textContent = 'Telefone inválido. Use um DDD válido (ex: 11, 21, 47).'; erroEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('btnSalvarPerfil');
   btn.disabled = true; btn.textContent = 'Salvando...';
@@ -376,11 +454,25 @@ async function salvarPerfilCliente() {
     data: { nome_completo: nome, telefone: tel }
   });
 
+  if (error) {
+    btn.disabled = false; btn.textContent = 'Salvar e Continuar';
+    erroEl.textContent = 'Erro ao salvar. Tente novamente.'; erroEl.style.display = 'block'; return;
+  }
+
+  const telNumeros = tel.replace(/\D/g, '');
+
+  // Cria ou atualiza registro na tabela clientes
+  if (state.clienteLogado?.userId) {
+    await db.from('clientes').upsert({
+      user_id:  state.clienteLogado.userId,
+      nome,
+      telefone: telNumeros,
+      cpf:      state.clienteLogado.cpf || '00000000000' // placeholder se veio pelo Google
+    }, { onConflict: 'user_id' });
+  }
+
   btn.disabled = false; btn.textContent = 'Salvar e Continuar';
-
-  if (error) { erroEl.textContent = 'Erro ao salvar. Tente novamente.'; erroEl.style.display = 'block'; return; }
-
-  state.clienteLogado = { ...state.clienteLogado, nome, telefone: tel };
+  state.clienteLogado = { ...state.clienteLogado, nome, telefone: telNumeros };
   goTo('screen-barbeiro');
 }
 
@@ -445,14 +537,27 @@ async function confirmarAgendamento() {
     status:   'confirmado'
   });
 
-  btn.disabled = false;
-  btn.textContent = 'Confirmar Agendamento';
-
   if (error) {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar Agendamento';
     showToast('Erro ao salvar. Tente novamente.');
     console.error(error);
     return;
   }
+
+  // Incrementa contadores na tabela clientes (se o cliente tiver conta)
+  if (state.clienteLogado?.userId) {
+    const novasVisitas = (state.clienteLogado.totalVisitas || 0) + 1;
+    const novoGasto    = Number(state.clienteLogado.totalGasto || 0) + Number(state.preco || 0);
+    await db.from('clientes')
+      .update({ total_visitas: novasVisitas, total_gasto: novoGasto })
+      .eq('user_id', state.clienteLogado.userId);
+    state.clienteLogado.totalVisitas = novasVisitas;
+    state.clienteLogado.totalGasto   = novoGasto;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Confirmar Agendamento';
 
   document.getElementById('successMsg').innerHTML =
     `✂️ ${state.servico} com ${state.barbeiro}<br>📅 ${state.dataFormatada} às ${state.horario}<br>💰 R$ ${state.preco}`;
@@ -542,8 +647,19 @@ async function loadAdminAgendamentos() {
       </div>`).join('');
   }
 
-  const { data: todos } = await db.from('agendamentos').select('*').order('created_at', { ascending: false });
+  // Lista de clientes: barbeiros só veem os próprios; admin vê todos
+  let clientesQuery = db.from('agendamentos').select('*').order('created_at', { ascending: false });
+  if (nomeBarbeiro) clientesQuery = clientesQuery.eq('barbeiro', nomeBarbeiro);
+
+  const { data: todos } = await clientesQuery;
   const clientes = document.getElementById('clientesLista');
+
+  // Título dinâmico: "Meus Clientes" para barbeiro, "Todos os Clientes" para admin
+  const tituloClientes = document.getElementById('tituloClientes');
+  if (tituloClientes) {
+    tituloClientes.textContent = nomeBarbeiro ? 'Meus Clientes' : 'Todos os Clientes';
+  }
+
   if (!todos || todos.length === 0) {
     clientes.innerHTML = '<p style="color:var(--text-dim); font-size:0.82rem; text-align:center; padding:2.5rem 0;">Nenhum cliente ainda</p>';
   } else {

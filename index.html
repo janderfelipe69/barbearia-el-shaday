@@ -101,11 +101,19 @@
 
       <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">Nome completo</label>
-        <input class="form-input" id="cliCadNome" type="text" placeholder="Seu nome" autocomplete="name">
+        <input class="form-input" id="cliCadNome" type="text" placeholder="Nome e sobrenome" autocomplete="name">
+      </div>
+      <div class="form-group" style="margin-bottom:0; width:100%">
+        <label class="form-label">CPF</label>
+        <input class="form-input" id="cliCadCpf" type="text" placeholder="000.000.000-00" inputmode="numeric" maxlength="14">
       </div>
       <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">WhatsApp</label>
-        <input class="form-input" id="cliCadTel" type="tel" placeholder="(17) 99999-9999" autocomplete="tel">
+        <input class="form-input" id="cliCadTel" type="tel" placeholder="(11) 99999-9999" autocomplete="tel">
+      </div>
+      <div class="form-group" style="margin-bottom:0; width:100%">
+        <label class="form-label">Data de nascimento</label>
+        <input class="form-input" id="cliCadNasc" type="date" autocomplete="bday">
       </div>
       <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">E-mail</label>
@@ -472,7 +480,7 @@
     <div id="agendamentosLista"><div class="loading">Carregando</div></div>
   </div>
   <div class="content" id="tab-clientes" style="display:none; flex:1; overflow-y:auto;">
-    <div class="section-label" style="margin-bottom:1rem">Todos os clientes</div>
+    <div class="section-label" style="margin-bottom:1rem" id="tituloClientes">Todos os Clientes</div>
     <div id="clientesLista"><div class="loading">Carregando</div></div>
   </div>
   <div class="content" id="tab-servicos" style="display:none; flex:1; overflow-y:auto;">
@@ -576,14 +584,22 @@
 
 
 <script>
-  // Máscara de telefone: (17) 99999-9999
+  // Máscara de telefone: (11) 99999-9999
   document.addEventListener('input', function(e) {
-    if (!['clienteTel','cliCadTel','perfilTel'].includes(e.target.id)) return;
-    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-    if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-    else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
-    else if (v.length > 0) v = `(${v}`;
-    e.target.value = v;
+    if (['clienteTel','cliCadTel','perfilTel'].includes(e.target.id)) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+      if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+      else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+      else if (v.length > 0) v = `(${v}`;
+      e.target.value = v;
+    }
+    if (e.target.id === 'cliCadCpf') {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+      if (v.length > 9) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6,9)}-${v.slice(9)}`;
+      else if (v.length > 6) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6)}`;
+      else if (v.length > 3) v = `${v.slice(0,3)}.${v.slice(3)}`;
+      e.target.value = v;
+    }
   });
 </script>
 <script src="app.js"></script>
