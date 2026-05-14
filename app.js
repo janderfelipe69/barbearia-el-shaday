@@ -14,7 +14,8 @@ const state = {
   data: null,
   dataFormatada: null,
   adminLogado: null,
-  adminData: new Date().toISOString().split('T')[0] // inicializa com hoje
+  adminUserId: null,
+  adminData: new Date().toISOString().split('T')[0]
 };
 
 const horariosTodos = [
@@ -41,13 +42,50 @@ function goTo(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
+  if (id === 'screen-barbeiro') loadBarbeiros();
   if (id === 'screen-servico') loadServicos();
   if (id === 'screen-horario') buildHorarios();
   if (id === 'screen-dados') buildResumo();
   if (id === 'screen-admin') buildAdmin();
 }
 
-// ══════════════════════════ SELEÇÃO DE BARBEIRO / SERVIÇO ══════════════════════════
+// ══════════════════════════ BARBEIROS DINÂMICOS ══════════════════════════
+async function loadBarbeiros() {
+  const lista = document.getElementById('barbeirosList');
+  lista.innerHTML = '<div class="loading">Carregando profissionais</div>';
+
+  // Busca usuários cadastrados no auth que tenham nome_completo nos metadados
+  // usando a tabela pública de barbeiros (profiles/barbeiros)
+  const { data, error } = await db
+    .from('barbeiros')
+    .select('id, nome, ativo')
+    .eq('ativo', true)
+    .order('nome');
+
+  if (error || !data || data.length === 0) {
+    lista.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">✂️</div>
+        <div class="empty-state-text">Nenhum profissional disponível no momento.</div>
+      </div>`;
+    return;
+  }
+
+  lista.innerHTML = data.map(b => {
+    const iniciais = b.nome.split(' ').slice(0, 2).map(p => p[0].toUpperCase()).join('');
+    return `
+      <div class="barber-card" onclick="selectBarber(this, '${b.nome.replace(/'/g, "\\'")}')">
+        <div class="barber-avatar">${iniciais}</div>
+        <div class="barber-info">
+          <div class="barber-name">${b.nome}</div>
+          <div class="barber-role">Barbeiro · Especialista</div>
+        </div>
+        <span class="barber-arrow-icon barber-arrow" style="font-size:1rem">→</span>
+        <span class="barber-check-icon">✓</span>
+      </div>`;
+  }).join('');
+}
+
 function selectBarber(el, nome) {
   document.querySelectorAll('#screen-barbeiro .barber-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
@@ -264,8 +302,23 @@ async function loadAdminAgendamentos() {
   const lista = document.getElementById('agendamentosLista');
   lista.innerHTML = '<div class="loading">Carregando</div>';
 
+  // Descobre se este usuário é admin (tem role 'admin' nos metadados)
+  // ou um barbeiro comum — busca o nome dele na tabela barbeiros
+  let nomeBarbeiro = null;
+  if (state.adminUserId) {
+    const { data: perfil } = await db
+      .from('barbeiros')
+      .select('nome, admin')
+      .eq('user_id', state.adminUserId)
+      .single();
+
+    if (perfil && !perfil.admin) {
+      nomeBarbeiro = perfil.nome;
+    }
+  }
+
   let query = db.from('agendamentos').select('*').eq('data', state.adminData).order('horario');
-  if (state.adminLogado !== 'Admin') query = query.eq('barbeiro', state.adminLogado);
+  if (nomeBarbeiro) query = query.eq('barbeiro', nomeBarbeiro);
 
   const { data, error } = await query;
   if (error) { lista.innerHTML = '<div class="loading">Erro ao carregar.</div>'; return; }
@@ -339,36 +392,21 @@ async function cancelarAgendamento(id, nomeCliente, event) {
   loadAdminAgendamentos();
 }
 
-// ══════════════════════════ AUTH GOOGLE ══════════════════════════
+// ══════════════════════════ AUTH EMAIL/SENHA ══════════════════════════
 
-// Emails autorizados a acessar o painel admin
-const EMAILS_AUTORIZADOS = [
-  'janderfeelipe@gmail.com',   
-  // adicione mais emails aqui se precisar
-];
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tab-btn-login').classList.toggle('active', isLogin);
+  document.getElementById('tab-btn-cadastro').classList.toggle('active', !isLogin);
+  document.getElementById('painel-login').style.display    = isLogin ? 'flex' : 'none';
+  document.getElementById('painel-cadastro').style.display = isLogin ? 'none' : 'flex';
+}
 
-// Mapa email → nome do barbeiro no sistema
-const EMAIL_PARA_NOME = {
-  'janderfeelipe@gmail.com': 'Rafael Henrique',
-};
-
-async function loginComGoogle() {
-  const btn = document.getElementById('btnGoogle');
-  btn.disabled = true;
-  btn.textContent = 'Aguarde...';
-
-  const { error } = await db.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.href
-    }
-  });
-
-  if (error) {
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/></svg> Entrar com Google`;
-    mostrarErroLogin('Erro ao iniciar login. Tente novamente.');
-  }
+function toggleSenha(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const oculto = input.type === 'password';
+  input.type = oculto ? 'text' : 'password';
+  btn.style.opacity = oculto ? '0.9' : '0.4';
 }
 
 function mostrarErroLogin(msg) {
@@ -377,40 +415,128 @@ function mostrarErroLogin(msg) {
   el.style.display = 'block';
 }
 
+function ocultarErroLogin() {
+  document.getElementById('loginErro').style.display = 'none';
+}
+
+async function loginComEmail() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha  = document.getElementById('loginSenha').value;
+
+  ocultarErroLogin();
+
+  if (!email || !senha) { mostrarErroLogin('Preencha e-mail e senha.'); return; }
+
+  const btn = document.getElementById('btnEntrar');
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
+
+  btn.disabled = false;
+  btn.textContent = 'Entrar';
+
+  if (error) {
+    const msg = error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
+      ? 'E-mail ou senha incorretos.'
+      : error.message;
+    mostrarErroLogin(msg);
+    return;
+  }
+
+  await verificarSessao();
+}
+
+async function cadastrarComEmail() {
+  const nome   = document.getElementById('cadNome').value.trim();
+  const email  = document.getElementById('cadEmail').value.trim();
+  const senha  = document.getElementById('cadSenha').value;
+  const senha2 = document.getElementById('cadSenha2').value;
+
+  const erroEl    = document.getElementById('cadastroErro');
+  const sucessoEl = document.getElementById('cadastroSucesso');
+  erroEl.style.display = 'none';
+  sucessoEl.style.display = 'none';
+
+  const mostrarErro = (msg) => { erroEl.textContent = msg; erroEl.style.display = 'block'; };
+
+  if (!nome)              { mostrarErro('Informe seu nome.'); return; }
+  if (!email)             { mostrarErro('Informe um e-mail válido.'); return; }
+  if (senha.length < 6)   { mostrarErro('A senha deve ter no mínimo 6 caracteres.'); return; }
+  if (senha !== senha2)   { mostrarErro('As senhas não coincidem.'); return; }
+
+  const btn = document.getElementById('btnCadastrar');
+  btn.disabled = true;
+  btn.textContent = 'Criando conta...';
+
+  const { data, error } = await db.auth.signUp({
+    email,
+    password: senha,
+    options: { data: { nome_completo: nome } }
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Criar Conta';
+
+  if (error) {
+    const msg = error.message.includes('already registered') || error.message.includes('User already registered')
+      ? 'Este e-mail já está cadastrado. Tente entrar.'
+      : error.message;
+    mostrarErro(msg);
+    return;
+  }
+
+  // Supabase pode confirmar email automaticamente ou não
+  if (data.session) {
+    // Confirmação desativada — já está logado
+    await verificarSessao();
+  } else {
+    // Confirmação por e-mail ativada
+    sucessoEl.textContent = '✓ Conta criada! Verifique seu e-mail para confirmar o cadastro e depois entre.';
+    sucessoEl.style.display = 'block';
+    document.getElementById('cadNome').value = '';
+    document.getElementById('cadEmail').value = '';
+    document.getElementById('cadSenha').value = '';
+    document.getElementById('cadSenha2').value = '';
+  }
+}
+
+async function logoutAdmin() {
+  await db.auth.signOut();
+  state.adminLogado = null;
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginSenha').value = '';
+  ocultarErroLogin();
+  goTo('screen-home');
+  showToast('Sessão encerrada.');
+}
+
 async function verificarSessao() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) return;
 
-  const email = session.user.email;
+  const user = session.user;
+  const nome = user.user_metadata?.nome_completo || user.email.split('@')[0];
 
-  if (!EMAILS_AUTORIZADOS.includes(email)) {
-    await db.auth.signOut();
-    goTo('screen-admin-login');
-    mostrarErroLogin(`Acesso negado. O email "${email}" não está autorizado.`);
-    return;
-  }
-
-  const nome = EMAIL_PARA_NOME[email] || 'Admin';
   state.adminLogado = nome;
+  state.adminUserId = user.id;
   document.getElementById('adminNome').textContent = nome;
   goTo('screen-admin');
 }
 
-// Detecta retorno do login Google e monitora mudanças de sessão
+// Detecta retorno do login e monitora mudanças de sessão
 db.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN') {
     verificarSessao();
+  }
+  if (event === 'SIGNED_OUT') {
+    state.adminLogado = null;
+    state.adminUserId = null;
   }
 });
 
 // Verifica sessão ao carregar a página (caso já esteja logado)
 verificarSessao();
-
-function loginAdmin(nome) {
-  state.adminLogado = nome;
-  document.getElementById('adminNome').textContent = nome === 'Admin' ? 'Administrador' : nome;
-  goTo('screen-admin');
-}
 
 // ══════════════════════════ PERFIL DO CLIENTE ══════════════════════════
 function fecharPerfil() {

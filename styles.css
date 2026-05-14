@@ -931,7 +931,48 @@ body {
 }
 .empty-state-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5; }
 .empty-state-text { font-size: 0.8rem; letter-spacing: 0.05em; line-height: 1.8; }
-/* ── BOTÃO GOOGLE ── */
+/* ── AUTH TABS (login / cadastro) ── */
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.9rem 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.25s;
+  margin-bottom: -1px;
+}
+.auth-tab:hover { color: var(--text-mid); }
+.auth-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* Botão olho (mostrar/ocultar senha) */
+.auth-eye-btn {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.7rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+.auth-eye-btn:hover { opacity: 0.8; }
+
+
 .btn-google {
   display: flex;
   align-items: center;
