@@ -979,7 +979,6 @@ body {
   justify-content: center;
   gap: 0.75rem;
   width: 100%;
-  max-width: 280px;
   background: var(--bg3);
   color: var(--text);
   border: 1px solid var(--border);

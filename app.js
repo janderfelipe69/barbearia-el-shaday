@@ -247,6 +247,16 @@ async function loginClienteGoogle() {
   if (error) showToast('Erro ao conectar com Google.');
 }
 
+async function loginBarbeiroGoogle() {
+  // Sinaliza que o retorno do OAuth deve ser tratado como barbeiro
+  sessionStorage.setItem('oauth_context', 'barbeiro');
+  const { error } = await db.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href, queryParams: { prompt: 'select_account' } }
+  });
+  if (error) showToast('Erro ao conectar com Google.');
+}
+
 async function loginClienteEmail() {
   const email = document.getElementById('cliLoginEmail').value.trim();
   const senha  = document.getElementById('cliLoginSenha').value;
@@ -762,22 +772,26 @@ async function verificarSessao() {
 // Detecta retorno do login e monitora mudanças de sessão
 db.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN') {
-    // Detecta contexto: se está na tela de login do barbeiro → trata como admin
+    const contexto = sessionStorage.getItem('oauth_context');
+    sessionStorage.removeItem('oauth_context');
+
     const telaAtual = document.querySelector('.screen.active')?.id;
-    if (telaAtual === 'screen-admin-login') {
+
+    if (contexto === 'barbeiro' || telaAtual === 'screen-admin-login') {
+      // Contexto de barbeiro — verifica autorização
       await verificarSessao();
     } else {
-      // Tenta como cliente primeiro
+      // Contexto de cliente
       const foiCliente = await verificarSessaoCliente(session);
       if (!foiCliente) {
-        // Pode ser barbeiro redirecionado de OAuth
+        // Fallback: pode ser barbeiro que já tinha sessão ativa
         await verificarSessao();
       }
     }
   }
   if (event === 'SIGNED_OUT') {
-    state.adminLogado  = null;
-    state.adminUserId  = null;
+    state.adminLogado   = null;
+    state.adminUserId   = null;
     state.clienteLogado = null;
   }
 });

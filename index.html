@@ -58,25 +58,25 @@
     <div class="section-label" style="text-align:center; margin-bottom:0.25rem">Bem-vindo de volta</div>
     <div class="section-title" style="text-align:center; margin-bottom:2rem">Entrar</div>
 
-    <div style="width:100%; max-width:320px; display:flex; flex-direction:column; gap:0.75rem;">
+    <div style="width:100%; max-width:320px; margin:0 auto; display:flex; flex-direction:column; gap:0.75rem; align-items:center;">
       <!-- Google -->
       <button class="btn-google" onclick="loginClienteGoogle()" id="btnCliGoogle">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
         Continuar com Google
       </button>
 
-      <div class="auth-divider"><span>ou</span></div>
+      <div class="auth-divider" style="width:100%"><span>ou</span></div>
 
-      <div class="form-group" style="margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">E-mail</label>
         <input class="form-input" id="cliLoginEmail" type="email" placeholder="seu@email.com" autocomplete="email">
       </div>
-      <div class="form-group" style="margin-bottom:0; position:relative;">
+      <div class="form-group" style="margin-bottom:0; position:relative; width:100%">
         <label class="form-label">Senha</label>
         <input class="form-input" id="cliLoginSenha" type="password" placeholder="••••••••" autocomplete="current-password">
         <button class="auth-eye-btn" type="button" onclick="toggleSenha('cliLoginSenha', this)">👁</button>
       </div>
-      <div id="cliLoginErro" style="display:none; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
+      <div id="cliLoginErro" style="display:none; width:100%; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
       <button class="btn-primary" id="btnCliEntrar" onclick="loginClienteEmail()" style="margin-top:0.25rem">Entrar</button>
       <p style="text-align:center; font-size:0.72rem; color:var(--text-dim); margin-top:0.25rem;">
         Não tem conta? <a href="#" onclick="switchClienteTab('criar'); return false;" style="color:var(--gold); text-decoration:none;">Criar conta</a>
@@ -90,39 +90,39 @@
     <div class="section-label" style="text-align:center; margin-bottom:0.25rem">Primeira vez aqui?</div>
     <div class="section-title" style="text-align:center; margin-bottom:2rem">Criar Conta</div>
 
-    <div style="width:100%; max-width:320px; display:flex; flex-direction:column; gap:0.75rem;">
+    <div style="width:100%; max-width:320px; margin:0 auto; display:flex; flex-direction:column; gap:0.75rem; align-items:center;">
       <!-- Google -->
       <button class="btn-google" onclick="loginClienteGoogle()" id="btnCliGoogleCad">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
         Continuar com Google
       </button>
 
-      <div class="auth-divider"><span>ou</span></div>
+      <div class="auth-divider" style="width:100%"><span>ou</span></div>
 
-      <div class="form-group" style="margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">Nome completo</label>
         <input class="form-input" id="cliCadNome" type="text" placeholder="Seu nome" autocomplete="name">
       </div>
-      <div class="form-group" style="margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">WhatsApp</label>
         <input class="form-input" id="cliCadTel" type="tel" placeholder="(17) 99999-9999" autocomplete="tel">
       </div>
-      <div class="form-group" style="margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">E-mail</label>
         <input class="form-input" id="cliCadEmail" type="email" placeholder="seu@email.com" autocomplete="email">
       </div>
-      <div class="form-group" style="margin-bottom:0; position:relative;">
+      <div class="form-group" style="margin-bottom:0; position:relative; width:100%">
         <label class="form-label">Senha</label>
         <input class="form-input" id="cliCadSenha" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
         <button class="auth-eye-btn" type="button" onclick="toggleSenha('cliCadSenha', this)">👁</button>
       </div>
-      <div class="form-group" style="margin-bottom:0; position:relative;">
+      <div class="form-group" style="margin-bottom:0; position:relative; width:100%">
         <label class="form-label">Confirmar senha</label>
         <input class="form-input" id="cliCadSenha2" type="password" placeholder="Repita a senha" autocomplete="new-password">
         <button class="auth-eye-btn" type="button" onclick="toggleSenha('cliCadSenha2', this)">👁</button>
       </div>
-      <div id="cliCadErro" style="display:none; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
-      <div id="cliCadSucesso" style="display:none; font-size:0.75rem; color:#4AC55E; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(74,197,94,0.08); border:1px solid rgba(74,197,94,0.2); border-radius:2px;"></div>
+      <div id="cliCadErro" style="display:none; width:100%; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
+      <div id="cliCadSucesso" style="display:none; width:100%; font-size:0.75rem; color:#4AC55E; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(74,197,94,0.08); border:1px solid rgba(74,197,94,0.2); border-radius:2px;"></div>
       <button class="btn-primary" id="btnCliCadastrar" onclick="cadastrarCliente()" style="margin-top:0.25rem">Criar Conta</button>
       <p style="text-align:center; font-size:0.72rem; color:var(--text-dim); margin-top:0.25rem;">
         Já tem conta? <a href="#" onclick="switchClienteTab('entrar'); return false;" style="color:var(--gold); text-decoration:none;">Entrar</a>
@@ -148,7 +148,7 @@
     <div class="section-label" style="text-align:center; margin-bottom:0.25rem">Quase lá</div>
     <div class="section-title" style="text-align:center; margin-bottom:0.5rem">Seu WhatsApp</div>
     <p style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-bottom:2rem; letter-spacing:0.03em; line-height:1.8;">Para confirmar seus agendamentos precisamos<br>do seu número de WhatsApp.</p>
-    <div style="width:100%; max-width:320px; display:flex; flex-direction:column; gap:0.75rem;">
+    <div style="width:100%; max-width:320px; margin:0 auto; display:flex; flex-direction:column; gap:0.75rem; align-items:center;">
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label">Nome completo</label>
         <input class="form-input" id="perfilNome" type="text" placeholder="Seu nome" autocomplete="name">
@@ -378,17 +378,25 @@
     <div class="section-label" style="text-align:center; margin-bottom:0.25rem">Acesso restrito</div>
     <div class="section-title" style="text-align:center; margin-bottom:2rem">Entrar na conta</div>
 
-    <div style="width:100%; max-width:320px; display:flex; flex-direction:column; gap:0.75rem;">
-      <div class="form-group" style="margin-bottom:0">
+    <div style="width:100%; max-width:320px; margin:0 auto; display:flex; flex-direction:column; gap:0.75rem; align-items:center;">
+      <!-- Google -->
+      <button class="btn-google" onclick="loginBarbeiroGoogle()" id="btnAdminGoogle">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continuar com Google
+      </button>
+
+      <div class="auth-divider" style="width:100%"><span>ou</span></div>
+
+      <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">E-mail</label>
         <input class="form-input" id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="email">
       </div>
-      <div class="form-group" style="margin-bottom:0; position:relative;">
+      <div class="form-group" style="margin-bottom:0; position:relative; width:100%">
         <label class="form-label">Senha</label>
         <input class="form-input" id="loginSenha" type="password" placeholder="••••••••" autocomplete="current-password">
         <button class="auth-eye-btn" type="button" onclick="toggleSenha('loginSenha', this)">👁</button>
       </div>
-      <div id="loginErro" style="display:none; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
+      <div id="loginErro" style="display:none; width:100%; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
       <button class="btn-primary" id="btnEntrar" onclick="loginComEmail()" style="margin-top:0.25rem">Entrar</button>
       <p style="text-align:center; font-size:0.72rem; color:var(--text-dim); margin-top:0.25rem;">
         Não tem conta? <a href="#" onclick="switchAuthTab('cadastro'); return false;" style="color:var(--gold); text-decoration:none;">Criar conta</a>
@@ -402,27 +410,35 @@
     <div class="section-label" style="text-align:center; margin-bottom:0.25rem">Novo acesso</div>
     <div class="section-title" style="text-align:center; margin-bottom:2rem">Criar Conta</div>
 
-    <div style="width:100%; max-width:320px; display:flex; flex-direction:column; gap:0.75rem;">
-      <div class="form-group" style="margin-bottom:0">
+    <div style="width:100%; max-width:320px; margin:0 auto; display:flex; flex-direction:column; gap:0.75rem; align-items:center;">
+      <!-- Google -->
+      <button class="btn-google" onclick="loginBarbeiroGoogle()" id="btnAdminGoogleCad">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continuar com Google
+      </button>
+
+      <div class="auth-divider" style="width:100%"><span>ou</span></div>
+
+      <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">Nome completo</label>
         <input class="form-input" id="cadNome" type="text" placeholder="Seu nome" autocomplete="name">
       </div>
-      <div class="form-group" style="margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">E-mail</label>
         <input class="form-input" id="cadEmail" type="email" placeholder="seu@email.com" autocomplete="email">
       </div>
-      <div class="form-group" style="margin-bottom:0; position:relative;">
+      <div class="form-group" style="margin-bottom:0; position:relative; width:100%">
         <label class="form-label">Senha</label>
         <input class="form-input" id="cadSenha" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
         <button class="auth-eye-btn" type="button" onclick="toggleSenha('cadSenha', this)">👁</button>
       </div>
-      <div class="form-group" style="margin-bottom:0; position:relative;">
+      <div class="form-group" style="margin-bottom:0; position:relative; width:100%">
         <label class="form-label">Confirmar senha</label>
         <input class="form-input" id="cadSenha2" type="password" placeholder="Repita a senha" autocomplete="new-password">
         <button class="auth-eye-btn" type="button" onclick="toggleSenha('cadSenha2', this)">👁</button>
       </div>
-      <div id="cadastroErro" style="display:none; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
-      <div id="cadastroSucesso" style="display:none; font-size:0.75rem; color:#4AC55E; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(74,197,94,0.08); border:1px solid rgba(74,197,94,0.2); border-radius:2px;"></div>
+      <div id="cadastroErro" style="display:none; width:100%; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
+      <div id="cadastroSucesso" style="display:none; width:100%; font-size:0.75rem; color:#4AC55E; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(74,197,94,0.08); border:1px solid rgba(74,197,94,0.2); border-radius:2px;"></div>
       <button class="btn-primary" id="btnCadastrar" onclick="cadastrarComEmail()" style="margin-top:0.25rem">Criar Conta</button>
       <p style="text-align:center; font-size:0.72rem; color:var(--text-dim); margin-top:0.25rem;">
         Já tem conta? <a href="#" onclick="switchAuthTab('login'); return false;" style="color:var(--gold); text-decoration:none;">Entrar</a>
