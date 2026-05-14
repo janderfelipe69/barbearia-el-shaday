@@ -71,20 +71,63 @@ function validarTelefone(tel) {
   return DDDS_VALIDOS.has(ddd);
 }
 
-function goTo(id) {
-  // Bloqueia acesso direto ao painel sem estar logado
-  if (id === 'screen-admin' && !state.adminLogado) {
-    goTo('screen-admin-login');
-    return;
-  }
+// ══════════════════════════ ROUTER (History API) ══════════════════════════
+
+const ROTAS = {
+  '/'                  : 'screen-home',
+  '/entrar'            : 'screen-cliente-login',
+  '/completar-perfil'  : 'screen-completar-perfil',
+  '/agendar'           : 'screen-barbeiro',
+  '/agendar/servico'   : 'screen-servico',
+  '/agendar/horario'   : 'screen-horario',
+  '/agendar/confirmar' : 'screen-dados',
+  '/agendar/sucesso'   : 'screen-sucesso',
+  '/barbeiro/login'    : 'screen-admin-login',
+  '/barbeiro/painel'   : 'screen-admin',
+};
+
+const SCREEN_PATH = Object.fromEntries(Object.entries(ROTAS).map(([p, s]) => [s, p]));
+
+function renderScreen(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const el = document.getElementById(screenId);
+  if (el) el.classList.add('active');
   window.scrollTo(0, 0);
-  if (id === 'screen-barbeiro') loadBarbeiros();
-  if (id === 'screen-servico') loadServicos();
-  if (id === 'screen-horario') buildHorarios();
-  if (id === 'screen-dados') buildResumo();
-  if (id === 'screen-admin') buildAdmin();
+  if (screenId === 'screen-barbeiro') loadBarbeiros();
+  if (screenId === 'screen-servico')  loadServicos();
+  if (screenId === 'screen-horario')  buildHorarios();
+  if (screenId === 'screen-dados')    buildResumo();
+  if (screenId === 'screen-admin')    buildAdmin();
+}
+
+function goTo(screenId) {
+  // Proteção de rotas privadas
+  if (screenId === 'screen-admin' && !state.adminLogado) {
+    goTo('screen-admin-login'); return;
+  }
+  if (['screen-barbeiro','screen-servico','screen-horario','screen-dados'].includes(screenId) && !state.clienteLogado) {
+    goTo('screen-cliente-login'); return;
+  }
+  const path = SCREEN_PATH[screenId] || '/';
+  if (window.location.pathname !== path) history.pushState({ screenId }, '', path);
+  renderScreen(screenId);
+}
+
+// Botão voltar/avançar do navegador
+window.addEventListener('popstate', (e) => {
+  const screenId = e.state?.screenId || resolverRota(window.location.pathname);
+  renderScreen(screenId);
+});
+
+function resolverRota(pathname) {
+  return ROTAS[pathname] || 'screen-home';
+}
+
+function initRouter() {
+  const screenId = resolverRota(window.location.pathname);
+  history.replaceState({ screenId }, '', window.location.pathname);
+  const publicas = ['screen-home', 'screen-cliente-login', 'screen-admin-login'];
+  if (publicas.includes(screenId)) renderScreen(screenId);
 }
 
 // ══════════════════════════ BARBEIROS DINÂMICOS ══════════════════════════
@@ -952,10 +995,17 @@ db.auth.onAuthStateChange(async (event, session) => {
     state.adminLogado   = null;
     state.adminUserId   = null;
     state.clienteLogado = null;
+    goTo('screen-home');
+  }
+
+  // Se não havia sessão (INITIAL_SESSION sem usuário), inicializa o router
+  if (event === 'INITIAL_SESSION' && !session) {
+    initRouter();
   }
 });
 
-// onAuthStateChange com INITIAL_SESSION cobre a inicialização da página
+// Inicializa o router assim que o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initRouter);
 
 // ══════════════════════════ PERFIL DO CLIENTE ══════════════════════════
 function fecharPerfil() {
