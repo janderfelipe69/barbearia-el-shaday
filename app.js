@@ -307,10 +307,12 @@ async function loginClienteEmail() {
   const btn = document.getElementById('btnCliEntrar');
   btn.disabled = true; btn.textContent = 'Entrando...';
 
+  _loginManual = true;
   const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
   btn.disabled = false; btn.textContent = 'Entrar';
 
   if (error) {
+    _loginManual = false;
     erroEl.textContent = error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
       ? 'E-mail ou senha incorretos.' : error.message;
     erroEl.style.display = 'block';
@@ -318,6 +320,7 @@ async function loginClienteEmail() {
   }
 
   await verificarSessaoCliente(data.session);
+  _loginManual = false;
 }
 
 async function cadastrarCliente() {
@@ -732,6 +735,9 @@ function ocultarErroLogin() {
   document.getElementById('loginErro').style.display = 'none';
 }
 
+// Flag para evitar que onAuthStateChange dispare em paralelo com login manual
+let _loginManual = false;
+
 async function loginComEmail() {
   const email = document.getElementById('loginEmail').value.trim();
   const senha  = document.getElementById('loginSenha').value;
@@ -744,12 +750,14 @@ async function loginComEmail() {
   btn.disabled = true;
   btn.textContent = 'Entrando...';
 
+  _loginManual = true;
   const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
 
   btn.disabled = false;
   btn.textContent = 'Entrar';
 
   if (error) {
+    _loginManual = false;
     const msg = error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
       ? 'E-mail ou senha incorretos.'
       : error.message;
@@ -757,12 +765,14 @@ async function loginComEmail() {
     return;
   }
 
-  // Verifica se está na tabela de barbeiros autorizados
+  // Verifica se está na tabela de barbeiros autorizados (usando dados já retornados)
   const { data: barbeiro } = await db
     .from('barbeiros')
-    .select('nome, ativo')
+    .select('nome, admin, ativo')
     .eq('user_id', data.user.id)
     .maybeSingle();
+
+  _loginManual = false;
 
   if (!barbeiro) {
     await db.auth.signOut();
@@ -776,7 +786,12 @@ async function loginComEmail() {
     return;
   }
 
-  await verificarSessao();
+  // Entra direto no painel sem chamar verificarSessao() novamente
+  const nome = barbeiro.nome || data.user.user_metadata?.nome_completo || data.user.email.split('@')[0];
+  state.adminLogado = nome;
+  state.adminUserId = data.user.id;
+  document.getElementById('adminNome').textContent = nome;
+  goTo('screen-admin');
 }
 
 async function cadastrarComEmail() {
@@ -890,6 +905,9 @@ async function verificarSessao() {
 
 // Detecta retorno do login e monitora mudanças de sessão
 db.auth.onAuthStateChange(async (event, session) => {
+  // Login manual já cuida de tudo — evita processamento duplicado
+  if (_loginManual) return;
+
   if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
     if (!session) return;
 
@@ -898,7 +916,6 @@ db.auth.onAuthStateChange(async (event, session) => {
     if (contexto === 'barbeiro') {
       localStorage.removeItem('oauth_context');
 
-      // Verifica se está cadastrado como barbeiro autorizado
       const { data: barbeiro } = await db
         .from('barbeiros')
         .select('nome, ativo')
@@ -908,7 +925,6 @@ db.auth.onAuthStateChange(async (event, session) => {
       if (!barbeiro) {
         await db.auth.signOut();
         goTo('screen-admin-login');
-        // Pequeno delay para a tela carregar antes de mostrar o erro
         setTimeout(() => mostrarErroLogin('Conta Google não autorizada. Fale com o administrador.'), 300);
         return;
       }
@@ -920,7 +936,6 @@ db.auth.onAuthStateChange(async (event, session) => {
         return;
       }
 
-      // Autorizado — entra no painel
       const nome = barbeiro.nome || session.user.user_metadata?.full_name || session.user.email.split('@')[0];
       state.adminLogado = nome;
       state.adminUserId = session.user.id;
@@ -929,7 +944,7 @@ db.auth.onAuthStateChange(async (event, session) => {
       return;
     }
 
-    // Sem contexto específico: verificarSessao decide se é barbeiro ou cliente
+    // INITIAL_SESSION (reload de página com sessão ativa) ou Google sem contexto
     await verificarSessao();
   }
 
