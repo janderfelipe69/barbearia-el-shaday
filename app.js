@@ -71,21 +71,89 @@ function validarTelefone(tel) {
   return DDDS_VALIDOS.has(ddd);
 }
 
-function goTo(id) {
-  // Bloqueia acesso direto ao painel sem estar logado
-  if (id === 'screen-admin' && !state.adminLogado) {
-    goTo('screen-admin-login');
-    return;
-  }
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  window.scrollTo(0, 0);
-  if (id === 'screen-barbeiro') loadBarbeiros();
-  if (id === 'screen-servico') loadServicos();
-  if (id === 'screen-horario') buildHorarios();
-  if (id === 'screen-dados') buildResumo();
-  if (id === 'screen-admin') buildAdmin();
+// ══════════════════════════ ROUTER (History API) ══════════════════════════
+
+const ROTAS = {
+  '/'                  : 'screen-home',
+  '/entrar'            : 'screen-cliente-login',
+  '/completar-perfil'  : 'screen-completar-perfil',
+  '/agendar'           : 'screen-barbeiro',
+  '/agendar/servico'   : 'screen-servico',
+  '/agendar/horario'   : 'screen-horario',
+  '/agendar/confirmar' : 'screen-dados',
+  '/agendar/sucesso'   : 'screen-sucesso',
+  '/barbeiro/login'    : 'screen-admin-login',
+  '/barbeiro/painel'   : 'screen-admin',
+};
+
+const SCREEN_PATH = Object.fromEntries(Object.entries(ROTAS).map(([p, s]) => [s, p]));
+
+function esconderLoading() {
+  const el = document.getElementById('screen-loading');
+  if (el) el.style.display = 'none';
 }
+
+function renderScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(screenId);
+  if (el) el.classList.add('active');
+  window.scrollTo(0, 0);
+  esconderLoading();
+  if (screenId === 'screen-barbeiro') loadBarbeiros();
+  if (screenId === 'screen-servico')  loadServicos();
+  if (screenId === 'screen-horario')  buildHorarios();
+  if (screenId === 'screen-dados')    buildResumo();
+  if (screenId === 'screen-admin')    buildAdmin();
+}
+
+function goTo(screenId) {
+  // Proteção de rotas privadas
+  if (screenId === 'screen-admin' && !state.adminLogado) {
+    goTo('screen-admin-login'); return;
+  }
+  if (['screen-barbeiro','screen-servico','screen-horario','screen-dados'].includes(screenId) && !state.clienteLogado) {
+    goTo('screen-cliente-login'); return;
+  }
+  const path = SCREEN_PATH[screenId] || '/';
+  if (window.location.pathname !== path) history.pushState({ screenId }, '', path);
+  renderScreen(screenId);
+}
+
+function resolverRota(pathname) {
+  return ROTAS[pathname] || 'screen-home';
+}
+
+// Botão voltar/avançar do navegador
+window.addEventListener('popstate', (e) => {
+  let screenId = e.state?.screenId || resolverRota(window.location.pathname);
+
+  // Proteção de rotas privadas no popstate (igual ao goTo)
+  if (screenId === 'screen-admin' && !state.adminLogado) {
+    screenId = 'screen-admin-login';
+    history.replaceState({ screenId }, '', '/barbeiro/login');
+  }
+  const rotasAgendamento = ['screen-barbeiro','screen-servico','screen-horario','screen-dados'];
+  if (rotasAgendamento.includes(screenId) && !state.clienteLogado) {
+    screenId = 'screen-cliente-login';
+    history.replaceState({ screenId }, '', '/entrar');
+  }
+
+  // Valida state do fluxo de agendamento ao navegar com botão voltar
+  if (screenId === 'screen-servico' && !state.barbeiro) {
+    screenId = 'screen-barbeiro';
+    history.replaceState({ screenId }, '', '/agendar');
+  }
+  if (screenId === 'screen-horario' && (!state.barbeiro || !state.servico)) {
+    screenId = state.barbeiro ? 'screen-servico' : 'screen-barbeiro';
+    history.replaceState({ screenId }, '', SCREEN_PATH[screenId]);
+  }
+  if (screenId === 'screen-dados' && (!state.barbeiro || !state.servico || !state.horario)) {
+    screenId = 'screen-horario';
+    history.replaceState({ screenId }, '', '/agendar/horario');
+  }
+
+  renderScreen(screenId);
+});
 
 // ══════════════════════════ BARBEIROS DINÂMICOS ══════════════════════════
 async function loadBarbeiros() {
@@ -240,12 +308,20 @@ async function loadHorarios() {
   const slotsOcupados = calcularSlotsOcupados(agendamentos || [], state.duracao);
 
   grid.innerHTML = '';
+
+  // Calcula horário mínimo: se for hoje, bloqueia horários que já passaram (+ 30min de margem)
+  const agora   = new Date();
+  const ehHoje  = state.data === agora.toISOString().split('T')[0];
+  const minAtual = ehHoje ? agora.getHours() * 60 + agora.getMinutes() + 30 : 0;
+
   horariosTodos.forEach(h => {
     const btn = document.createElement('button');
-    const ocupado = slotsOcupados.includes(h);
-    btn.className = 'time-btn' + (ocupado ? ' unavailable' : '');
+    const ocupado  = slotsOcupados.includes(h);
+    const passado  = horaParaMin(h) < minAtual;
+    const indispon = ocupado || passado;
+    btn.className   = 'time-btn' + (indispon ? ' unavailable' : '');
     btn.textContent = h;
-    if (!ocupado) {
+    if (!indispon) {
       btn.onclick = function() {
         document.querySelectorAll('.time-btn:not(.unavailable)').forEach(b => b.classList.remove('selected'));
         this.classList.add('selected');
@@ -432,11 +508,15 @@ async function verificarSessaoCliente(session) {
     totalGasto:     perfil?.total_gasto || 0,
   };
 
-  // Se não tem telefone (ex: entrou pelo Google e não completou), pede para completar perfil
+  // Se falta telefone ou CPF (ex: entrou pelo Google e não completou), pede para completar perfil
   const telFinal = state.clienteLogado.telefone;
-  if (!telFinal || telFinal.replace(/\D/g,'').length < 10) {
+  const cpfFinal = state.clienteLogado.cpf;
+  const semTel   = !telFinal || telFinal.replace(/\D/g,'').length < 10;
+  const semCpf   = !cpfFinal || cpfFinal.replace(/\D/g,'').length < 11;
+  if (semTel || semCpf) {
     document.getElementById('perfilNome').value = state.clienteLogado.nome;
-    document.getElementById('perfilTel').value  = '';
+    document.getElementById('perfilTel').value  = semTel ? '' : telFinal;
+    document.getElementById('perfilCpf').value  = semCpf ? '' : cpfFinal;
     goTo('screen-completar-perfil');
     return true;
   }
@@ -448,11 +528,27 @@ async function verificarSessaoCliente(session) {
 async function salvarPerfilCliente() {
   const nome = document.getElementById('perfilNome').value.trim();
   const tel  = document.getElementById('perfilTel').value.trim();
+  const cpf  = document.getElementById('perfilCpf').value.trim();
   const erroEl = document.getElementById('perfilErro');
   erroEl.style.display = 'none';
 
-  if (!nome || nome.split(/\s+/).length < 2) { erroEl.textContent = 'Informe seu nome completo.'; erroEl.style.display = 'block'; return; }
-  if (!tel || !validarTelefone(tel)) { erroEl.textContent = 'Telefone inválido. Use um DDD válido (ex: 11, 21, 47).'; erroEl.style.display = 'block'; return; }
+  const err = (msg) => { erroEl.textContent = msg; erroEl.style.display = 'block'; };
+
+  if (!nome || nome.split(/\s+/).length < 2) return err('Informe seu nome completo (nome e sobrenome).');
+  if (!tel  || !validarTelefone(tel))          return err('Telefone inválido. Use um DDD válido (ex: 11, 21, 47).');
+  if (!cpf  || !validarCPF(cpf))               return err('CPF inválido. Verifique os números digitados.');
+
+  const cpfNumeros = cpf.replace(/\D/g, '');
+
+  // Verifica CPF duplicado (outro usuário já cadastrado com este CPF)
+  const { data: cpfExistente } = await db
+    .from('clientes')
+    .select('id, user_id')
+    .eq('cpf', cpfNumeros)
+    .maybeSingle();
+  if (cpfExistente && cpfExistente.user_id !== state.clienteLogado?.userId) {
+    return err('Este CPF já está cadastrado em outra conta.');
+  }
 
   const btn = document.getElementById('btnSalvarPerfil');
   btn.disabled = true; btn.textContent = 'Salvando...';
@@ -463,23 +559,23 @@ async function salvarPerfilCliente() {
 
   if (error) {
     btn.disabled = false; btn.textContent = 'Salvar e Continuar';
-    erroEl.textContent = 'Erro ao salvar. Tente novamente.'; erroEl.style.display = 'block'; return;
+    return err('Erro ao salvar. Tente novamente.');
   }
 
   const telNumeros = tel.replace(/\D/g, '');
 
-  // Cria ou atualiza registro na tabela clientes
+  // Cria ou atualiza registro na tabela clientes (com CPF)
   if (state.clienteLogado?.userId) {
     await db.from('clientes').upsert({
       user_id:  state.clienteLogado.userId,
       nome,
       telefone: telNumeros,
-      cpf:      state.clienteLogado.cpf || '00000000000' // placeholder se veio pelo Google
+      cpf:      cpfNumeros,
     }, { onConflict: 'user_id' });
   }
 
   btn.disabled = false; btn.textContent = 'Salvar e Continuar';
-  state.clienteLogado = { ...state.clienteLogado, nome, telefone: telNumeros };
+  state.clienteLogado = { ...state.clienteLogado, nome, telefone: telNumeros, cpf: cpfNumeros };
   goTo('screen-barbeiro');
 }
 
@@ -528,8 +624,35 @@ async function confirmarAgendamento() {
   const tel  = document.getElementById('clienteTel').value.trim();
   if (!nome || !tel) { showToast('Preencha seu nome e WhatsApp'); return; }
 
+  // Valida que o fluxo está completo
+  if (!state.barbeiro || !state.servico || !state.horario || !state.data) {
+    showToast('Dados do agendamento incompletos. Recomece.');
+    goTo('screen-barbeiro');
+    return;
+  }
+
   const btn = document.getElementById('btnConfirmar');
   btn.disabled = true;
+  btn.textContent = 'Verificando...';
+
+  // Verifica conflito de horário em tempo real antes de inserir
+  const { data: conflitos } = await db
+    .from('agendamentos')
+    .select('horario, duracao')
+    .eq('barbeiro', state.barbeiro)
+    .eq('data', state.data)
+    .eq('status', 'confirmado');
+
+  const slotsConflitantes = calcularSlotsOcupados(conflitos || [], state.duracao);
+  if (slotsConflitantes.includes(state.horario)) {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar Agendamento';
+    showToast('Este horário acabou de ser ocupado. Escolha outro.');
+    state.horario = null;
+    goTo('screen-horario');
+    return;
+  }
+
   btn.textContent = 'Salvando...';
 
   const { error } = await db.from('agendamentos').insert({
@@ -563,11 +686,25 @@ async function confirmarAgendamento() {
     state.clienteLogado.totalGasto   = novoGasto;
   }
 
+  // Salva resumo antes de limpar o state
+  const resumo = {
+    servico:       state.servico,
+    barbeiro:      state.barbeiro,
+    dataFormatada: state.dataFormatada,
+    horario:       state.horario,
+    preco:         state.preco,
+  };
+
+  // Limpa state do fluxo de agendamento para não reutilizar dados antigos
+  state.barbeiro = null; state.servico = null; state.preco = null;
+  state.duracao  = null; state.horario = null; state.data  = null;
+  state.dataFormatada = null;
+
   btn.disabled = false;
   btn.textContent = 'Confirmar Agendamento';
 
   document.getElementById('successMsg').innerHTML =
-    `✂️ ${state.servico} com ${state.barbeiro}<br>📅 ${state.dataFormatada} às ${state.horario}<br>💰 R$ ${state.preco}`;
+    `✂️ ${resumo.servico} com ${resumo.barbeiro}<br>📅 ${resumo.dataFormatada} às ${resumo.horario}<br>💰 R$ ${resumo.preco}`;
   goTo('screen-sucesso');
 }
 
@@ -613,18 +750,9 @@ async function loadAdminAgendamentos() {
 
   // Descobre se este usuário é admin (tem role 'admin' nos metadados)
   // ou um barbeiro comum — busca o nome dele na tabela barbeiros
-  let nomeBarbeiro = null;
-  if (state.adminUserId) {
-    const { data: perfil } = await db
-      .from('barbeiros')
-      .select('nome, admin')
-      .eq('user_id', state.adminUserId)
-      .single();
-
-    if (perfil && !perfil.admin) {
-      nomeBarbeiro = perfil.nome;
-    }
-  }
+  // Usa dados já carregados no state — evita consulta extra ao banco
+  // state.adminLogado = nome do barbeiro; state.adminIsAdmin = true se for dono
+  const nomeBarbeiro = state.adminIsAdmin ? null : state.adminLogado;
 
   let query = db.from('agendamentos').select('*').eq('data', state.adminData).order('horario');
   if (nomeBarbeiro) query = query.eq('barbeiro', nomeBarbeiro);
@@ -792,8 +920,9 @@ async function loginComEmail() {
 
   // Entra direto no painel sem chamar verificarSessao() novamente
   const nome = barbeiro.nome || data.user.user_metadata?.nome_completo || data.user.email.split('@')[0];
-  state.adminLogado = nome;
-  state.adminUserId = data.user.id;
+  state.adminLogado  = nome;
+  state.adminUserId  = data.user.id;
+  state.adminIsAdmin = !!barbeiro.admin;
   document.getElementById('adminNome').textContent = nome;
   goTo('screen-admin');
 }
@@ -868,7 +997,8 @@ async function cadastrarComEmail() {
 
 async function logoutAdmin() {
   await db.auth.signOut();
-  state.adminLogado = null;
+  state.adminLogado  = null;
+  state.adminUserId  = null;
   document.getElementById('loginEmail').value = '';
   document.getElementById('loginSenha').value = '';
   ocultarErroLogin();
@@ -897,8 +1027,9 @@ async function verificarSessao() {
       return;
     }
     const nome = barbeiro.nome || user.user_metadata?.nome_completo || user.user_metadata?.full_name || user.email.split('@')[0];
-    state.adminLogado = nome;
-    state.adminUserId = user.id;
+    state.adminLogado  = nome;
+    state.adminUserId  = user.id;
+    state.adminIsAdmin = !!barbeiro.admin;
     document.getElementById('adminNome').textContent = nome;
     goTo('screen-admin');
   } else {
@@ -912,7 +1043,20 @@ db.auth.onAuthStateChange(async (event, session) => {
   // Login manual já cuida de tudo — evita processamento duplicado
   if (_loginManual) return;
 
-  if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+  if (event === 'INITIAL_SESSION') {
+    if (!session) {
+      // Sem sessão — resolve rota atual e mostra a tela (pública)
+      const screenId = resolverRota(window.location.pathname);
+      history.replaceState({ screenId }, '', window.location.pathname);
+      renderScreen(screenId);
+      return;
+    }
+    // Tem sessão salva — restaura usuário e redireciona para rota correta
+    await verificarSessao();
+    return;
+  }
+
+  if (event === 'SIGNED_IN') {
     if (!session) return;
 
     const contexto = localStorage.getItem('oauth_context');
@@ -941,14 +1085,15 @@ db.auth.onAuthStateChange(async (event, session) => {
       }
 
       const nome = barbeiro.nome || session.user.user_metadata?.full_name || session.user.email.split('@')[0];
-      state.adminLogado = nome;
-      state.adminUserId = session.user.id;
+      state.adminLogado  = nome;
+      state.adminUserId  = session.user.id;
+      state.adminIsAdmin = !!barbeiro.admin;
       document.getElementById('adminNome').textContent = nome;
       goTo('screen-admin');
       return;
     }
 
-    // INITIAL_SESSION (reload de página com sessão ativa) ou Google sem contexto
+    // Google cliente sem contexto específico
     await verificarSessao();
   }
 
@@ -956,10 +1101,9 @@ db.auth.onAuthStateChange(async (event, session) => {
     state.adminLogado   = null;
     state.adminUserId   = null;
     state.clienteLogado = null;
+    renderScreen('screen-home');
   }
 });
-
-// onAuthStateChange com INITIAL_SESSION cobre a inicialização da página
 
 // ══════════════════════════ PERFIL DO CLIENTE ══════════════════════════
 function fecharPerfil() {

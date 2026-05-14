@@ -114,13 +114,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="styles.css">
+<style>
+@keyframes pulse {
+  0%,80%,100% { opacity:0.2; transform:scale(0.8); }
+  40%          { opacity:1;   transform:scale(1);   }
+}
+</style>
 </head>
 <body>
 
 <div class="toast" id="toast"></div>
 
 <!-- ══════════════════════════ TELA 1: HOME ══════════════════════════ -->
-<div class="screen active" id="screen-home">
+<div class="screen" id="screen-home">
   <div class="hero-home">
     <div class="hero-bg"></div>
     <div class="hero-ornament"></div>
@@ -252,8 +258,8 @@
   <div class="content" style="display:flex; flex-direction:column; align-items:center; padding-top:2.5rem;">
     <div class="hero-ornament" style="margin-bottom:1.25rem"></div>
     <div class="section-label" style="text-align:center; margin-bottom:0.25rem">Quase lá</div>
-    <div class="section-title" style="text-align:center; margin-bottom:0.5rem">Seu WhatsApp</div>
-    <p style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-bottom:2rem; letter-spacing:0.03em; line-height:1.8;">Para confirmar seus agendamentos precisamos<br>do seu número de WhatsApp.</p>
+    <div class="section-title" style="text-align:center; margin-bottom:0.5rem">Complete seu cadastro</div>
+    <p style="font-size:0.75rem; color:var(--text-dim); text-align:center; margin-bottom:2rem; letter-spacing:0.03em; line-height:1.8;">Confirme seus dados e preencha as informações<br>necessárias para continuar.</p>
     <div style="width:100%; max-width:320px; margin:0 auto; display:flex; flex-direction:column; gap:0.75rem; align-items:center;">
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label">Nome completo</label>
@@ -262,6 +268,10 @@
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label">WhatsApp</label>
         <input class="form-input" id="perfilTel" type="tel" placeholder="(17) 99999-9999" autocomplete="tel">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">CPF</label>
+        <input class="form-input" id="perfilCpf" type="text" placeholder="000.000.000-00" autocomplete="off" inputmode="numeric" maxlength="14">
       </div>
       <div id="perfilErro" style="display:none; font-size:0.75rem; color:#c04444; letter-spacing:0.03em; line-height:1.7; padding:0.6rem 0.75rem; background:rgba(192,68,68,0.08); border:1px solid rgba(192,68,68,0.2); border-radius:2px;"></div>
       <button class="btn-primary" id="btnSalvarPerfil" onclick="salvarPerfilCliente()">Salvar e Continuar</button>
@@ -682,16 +692,38 @@
 
 
 <script>
-  // Máscara de telefone: (17) 99999-9999
   document.addEventListener('input', function(e) {
-    if (!['clienteTel','cliCadTel','perfilTel'].includes(e.target.id)) return;
-    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-    if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-    else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
-    else if (v.length > 0) v = `(${v}`;
-    e.target.value = v;
+    // Máscara de telefone
+    if (['clienteTel','cliCadTel','perfilTel'].includes(e.target.id)) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+      if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+      else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+      else if (v.length > 0) v = `(${v}`;
+      e.target.value = v;
+    }
+    // Máscara de CPF
+    if (['cliCadCpf','perfilCpf'].includes(e.target.id)) {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+      if (v.length > 9) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6,9)}-${v.slice(9)}`;
+      else if (v.length > 6) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6)}`;
+      else if (v.length > 3) v = `${v.slice(0,3)}.${v.slice(3)}`;
+      e.target.value = v;
+    }
   });
 </script>
 <script src="app.js"></script>
+
+<!-- Tela de loading inicial enquanto sessão é verificada -->
+<div id="screen-loading" style="
+  position:fixed; inset:0; background:var(--bg, #0a0a0a);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:9999; gap:1rem;">
+  <div style="font-family:'Cormorant Garamond',serif; font-size:1.6rem; color:#c9a84c; letter-spacing:0.15em;">El Shaday</div>
+  <div style="display:flex; gap:6px; margin-top:0.5rem;">
+    <span style="width:8px;height:8px;border-radius:50%;background:#c9a84c;animation:pulse 1.2s ease-in-out infinite;animation-delay:0s"></span>
+    <span style="width:8px;height:8px;border-radius:50%;background:#c9a84c;animation:pulse 1.2s ease-in-out infinite;animation-delay:0.2s"></span>
+    <span style="width:8px;height:8px;border-radius:50%;background:#c9a84c;animation:pulse 1.2s ease-in-out infinite;animation-delay:0.4s"></span>
+  </div>
+</div>
 </body>
 </html>
