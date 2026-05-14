@@ -4,7 +4,113 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barbearia El Shaday</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✂️</text></svg>">
+<link rel="icon" id="favicon" type="image/png" href="">
+<script>
+(function() {
+  const SIZE   = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = SIZE;
+  const ctx    = canvas.getContext('2d');
+  const link   = document.getElementById('favicon');
+  let   offset = 0;
+
+  function draw() {
+    ctx.clearRect(0, 0, SIZE, SIZE);
+
+    // — Poste cilíndrico com cantos arredondados —
+    const rx = 10, ry = 4;
+    const x0 = 14, x1 = SIZE - 14;
+    const y0 = 6,  y1 = SIZE - 6;
+    const W  = x1 - x0;
+    const H  = y1 - y0;
+
+    // Fundo branco do poste
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x0 + rx, y0);
+    ctx.lineTo(x1 - rx, y0);
+    ctx.quadraticCurveTo(x1, y0, x1, y0 + ry);
+    ctx.lineTo(x1, y1 - ry);
+    ctx.quadraticCurveTo(x1, y1, x1 - rx, y1);
+    ctx.lineTo(x0 + rx, y1);
+    ctx.quadraticCurveTo(x0, y1, x0, y1 - ry);
+    ctx.lineTo(x0, y0 + ry);
+    ctx.quadraticCurveTo(x0, y0, x0 + rx, y0);
+    ctx.closePath();
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fill();
+
+    // Clip para as listras ficarem dentro do poste
+    ctx.clip();
+
+    // Listras diagonais animadas (vermelho e azul alternando no branco)
+    const STRIPE = 10;
+    const TOTAL  = H + W;
+    for (let i = -TOTAL; i < TOTAL * 2; i += STRIPE * 3) {
+      const pos = i + (offset % (STRIPE * 3));
+      // Listra vermelha
+      ctx.beginPath();
+      ctx.moveTo(x0 + pos,       y0);
+      ctx.lineTo(x0 + pos + STRIPE, y0);
+      ctx.lineTo(x0 + pos + STRIPE - H, y1);
+      ctx.lineTo(x0 + pos - H,   y1);
+      ctx.closePath();
+      ctx.fillStyle = '#CC2222';
+      ctx.fill();
+      // Listra azul
+      ctx.beginPath();
+      ctx.moveTo(x0 + pos + STRIPE,       y0);
+      ctx.lineTo(x0 + pos + STRIPE * 2,   y0);
+      ctx.lineTo(x0 + pos + STRIPE * 2 - H, y1);
+      ctx.lineTo(x0 + pos + STRIPE - H,   y1);
+      ctx.closePath();
+      ctx.fillStyle = '#1A3BAA';
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Borda do poste
+    ctx.beginPath();
+    ctx.moveTo(x0 + rx, y0);
+    ctx.lineTo(x1 - rx, y0);
+    ctx.quadraticCurveTo(x1, y0, x1, y0 + ry);
+    ctx.lineTo(x1, y1 - ry);
+    ctx.quadraticCurveTo(x1, y1, x1 - rx, y1);
+    ctx.lineTo(x0 + rx, y1);
+    ctx.quadraticCurveTo(x0, y1, x0, y1 - ry);
+    ctx.lineTo(x0, y0 + ry);
+    ctx.quadraticCurveTo(x0, y0, x0 + rx, y0);
+    ctx.closePath();
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+
+    // Tampa topo
+    ctx.fillStyle = '#888';
+    ctx.beginPath();
+    ctx.ellipse(SIZE/2, y0 + ry, W/2, ry + 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tampa base
+    ctx.fillStyle = '#888';
+    ctx.beginPath();
+    ctx.ellipse(SIZE/2, y1 - ry, W/2, ry + 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    link.href = canvas.toDataURL('image/png');
+    offset += 1;
+    requestAnimationFrame(draw);
+  }
+
+  // Inicia após o DOM estar pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', draw);
+  } else {
+    draw();
+  }
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="styles.css">
@@ -101,19 +207,11 @@
 
       <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">Nome completo</label>
-        <input class="form-input" id="cliCadNome" type="text" placeholder="Nome e sobrenome" autocomplete="name">
-      </div>
-      <div class="form-group" style="margin-bottom:0; width:100%">
-        <label class="form-label">CPF</label>
-        <input class="form-input" id="cliCadCpf" type="text" placeholder="000.000.000-00" inputmode="numeric" maxlength="14">
+        <input class="form-input" id="cliCadNome" type="text" placeholder="Seu nome" autocomplete="name">
       </div>
       <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">WhatsApp</label>
-        <input class="form-input" id="cliCadTel" type="tel" placeholder="(11) 99999-9999" autocomplete="tel">
-      </div>
-      <div class="form-group" style="margin-bottom:0; width:100%">
-        <label class="form-label">Data de nascimento</label>
-        <input class="form-input" id="cliCadNasc" type="date" autocomplete="bday">
+        <input class="form-input" id="cliCadTel" type="tel" placeholder="(17) 99999-9999" autocomplete="tel">
       </div>
       <div class="form-group" style="margin-bottom:0; width:100%">
         <label class="form-label">E-mail</label>
@@ -584,22 +682,14 @@
 
 
 <script>
-  // Máscara de telefone: (11) 99999-9999
+  // Máscara de telefone: (17) 99999-9999
   document.addEventListener('input', function(e) {
-    if (['clienteTel','cliCadTel','perfilTel'].includes(e.target.id)) {
-      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-      if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-      else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
-      else if (v.length > 0) v = `(${v}`;
-      e.target.value = v;
-    }
-    if (e.target.id === 'cliCadCpf') {
-      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-      if (v.length > 9) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6,9)}-${v.slice(9)}`;
-      else if (v.length > 6) v = `${v.slice(0,3)}.${v.slice(3,6)}.${v.slice(6)}`;
-      else if (v.length > 3) v = `${v.slice(0,3)}.${v.slice(3)}`;
-      e.target.value = v;
-    }
+    if (!['clienteTel','cliCadTel','perfilTel'].includes(e.target.id)) return;
+    let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 6) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+    else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+    else if (v.length > 0) v = `(${v}`;
+    e.target.value = v;
   });
 </script>
 <script src="app.js"></script>
