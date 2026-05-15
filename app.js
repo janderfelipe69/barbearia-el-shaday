@@ -1215,7 +1215,7 @@ async function loadServicos() {
 
   const { data, error } = await db
     .from('servicos')
-    .select('id, nome, preco, duracao, ativo')
+    .select('id, nome, descricao, preco, duracao, ativo')
     .order('nome');
 
   if (error) {
